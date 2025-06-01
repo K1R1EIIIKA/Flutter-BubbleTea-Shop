@@ -1,4 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:math_expressions/math_expressions.dart';
+
+import 'home.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,116 +11,363 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Calculator with Shop',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        // Отключаем обычные “ripple”-эффекты, чтобы кнопки в калькуляторе вели
+        // себя точно так же, как в предыдущей версии
+        splashFactory: NoSplash.splashFactory,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MainPage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class MainPage extends StatefulWidget {
+  const MainPage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MainPage> createState() => _MainPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MainPageState extends State<MainPage> {
+  int _currentIndex = 0;
 
-  void _incrementCounter() {
+  // Те же цвета, что и в вашем калькуляторе:
+  static const Color _bgColor = Color(0xFFF2D8B0);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bgColor,
+      // IndexedStack показывает только одну страницу из списка
+      body: IndexedStack(
+        index: _currentIndex,
+        children: const [
+          CalculatorView(), // ваша логика калькулятора
+          ShopView(), // страница "Магазин"
+        ],
+      ),
+      // iOS-подобная нижняя панель навигации
+      bottomNavigationBar: CupertinoTabBar(
+        backgroundColor: Colors.white,
+        activeColor: Color(0xFF5C3A21),
+        // совпадает с цветом operatorButton
+        inactiveColor: Color(0xFFA67C52),
+        // совпадает с цветом digitButton
+        currentIndex: _currentIndex,
+        onTap: (int index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.plus_app),
+            label: 'Calc',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.cart),
+            label: 'Shop',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CalculatorView extends StatefulWidget {
+  const CalculatorView({super.key});
+
+  @override
+  State<CalculatorView> createState() => _CalculatorViewState();
+}
+
+class _CalculatorViewState extends State<CalculatorView> {
+  String _expression = '';
+
+  // Цвета те же, что в предыдущей версии:
+  static const Color _displayColor = Color(0xFFFFF1D5); // фон дисплея
+  static const Color _digitButtonColor = Color(0xFFA67C52); // цифры, C, =
+  static const Color _operatorButtonColor = Color(0xFF5C3A21); // + - × ÷
+  static const Color _textColorDark = Color(0xFF3A2A1C); // тёмный текст
+  static const Color _textColorLight = Color(
+    0xFFF5E8D0,
+  ); // светлый (текст на тёмном фоне)
+
+  void _onButtonPressed(String value) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      if (value == 'C') {
+        _expression = '';
+      } else if (value == '=') {
+        _calculateResult();
+      } else {
+        _expression += value;
+      }
     });
+  }
+
+  void _calculateResult() {
+    if (_expression.isEmpty) return;
+    // Заменяем ■ пользовательские символы на понятные парсеру
+    String parsedExp = _expression
+        .replaceAll('×', '*')
+        .replaceAll('÷', '/')
+        .replaceAll('−', '-');
+
+    try {
+      Parser p = Parser();
+      Expression exp = p.parse(parsedExp);
+      ContextModel cm = ContextModel();
+      double eval = exp.evaluate(EvaluationType.REAL, cm);
+
+      // Если получилось целое число, убираем «.0»
+      String resultStr = eval.toStringAsFixed(
+        eval.truncateToDouble() == eval ? 0 : 6,
+      );
+      _expression = resultStr;
+    } catch (e) {
+      _expression = 'Error';
+    }
+  }
+
+  Widget _buildDisplay() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      decoration: BoxDecoration(
+        color: _displayColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        _expression.isEmpty ? '0' : _expression,
+        textAlign: TextAlign.right,
+        style: const TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w500,
+          color: _textColorDark,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildButton({
+    required String label,
+    required Color bgColor,
+    required Color textColor,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(6.0),
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: Material(
+            color: bgColor,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              highlightColor: textColor.withOpacity(0.2),
+              splashColor: Colors.transparent,
+              onTap: onTap,
+              child: Center(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKeypad() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            _buildButton(
+              label: '7',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('7'),
+            ),
+            _buildButton(
+              label: '8',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('8'),
+            ),
+            _buildButton(
+              label: '9',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('9'),
+            ),
+            _buildButton(
+              label: '÷',
+              bgColor: _operatorButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('÷'),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            _buildButton(
+              label: '4',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('4'),
+            ),
+            _buildButton(
+              label: '5',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('5'),
+            ),
+            _buildButton(
+              label: '6',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('6'),
+            ),
+            _buildButton(
+              label: '×',
+              bgColor: _operatorButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('×'),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            _buildButton(
+              label: '1',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('1'),
+            ),
+            _buildButton(
+              label: '2',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('2'),
+            ),
+            _buildButton(
+              label: '3',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('3'),
+            ),
+            _buildButton(
+              label: '−',
+              bgColor: _operatorButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('−'),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            _buildButton(
+              label: '0',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('0'),
+            ),
+            _buildButton(
+              label: 'C',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('C'),
+            ),
+            _buildButton(
+              label: '=',
+              bgColor: _digitButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('='),
+            ),
+            _buildButton(
+              label: '+',
+              bgColor: _operatorButtonColor,
+              textColor: _textColorLight,
+              onTap: () => _onButtonPressed('+'),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            const Text(
+              'Calculator',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 20),
+            _buildDisplay(),
+            const SizedBox(height: 24),
+            // Клавиатура занимает всё остальное пространство
+            Expanded(child: _buildKeypad()),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ---------------
+/// Очень простая “заполнительная” страница магазина.
+/// Когда пользователь нажмёт на вкладку «Shop», здесь можно вывести
+/// список товаров или WebView и т. д.
+/// ---------------
+class ShopView extends StatelessWidget {
+  const ShopView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Shop',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'Здесь будет страница магазина',
+                  style: TextStyle(fontSize: 18, color: Colors.grey.shade700),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
