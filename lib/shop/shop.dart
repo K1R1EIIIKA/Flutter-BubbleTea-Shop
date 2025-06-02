@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:labs/shop/cart_page.dart';
+import 'package:labs/cart/cart_page.dart';
 import 'package:labs/shop/drink_item.dart';
 import 'package:labs/utils/json_controller.dart';
-import 'models/Drink.dart';
+import '../models/Drink.dart';
 
 class ShopView extends StatefulWidget {
   const ShopView({Key? key}) : super(key: key);

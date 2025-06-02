@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'cart_controller.dart';
-import 'cart_page.dart';
+import '../cart/cart_controller.dart';
+import '../cart/cart_page.dart';
 
 class DrinkDetailPage extends StatelessWidget {
   final String imagePath;

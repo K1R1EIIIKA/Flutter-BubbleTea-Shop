@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:labs/login.dart';
-import 'package:labs/shop.dart';
+import 'package:labs/auth/login.dart';
+import 'package:labs/shop/shop.dart';
 import 'package:labs/shop/cart_controller.dart';
-import 'package:labs/shop/cart_page.dart';
+import 'package:labs/cart/cart_page.dart';
 import 'package:math_expressions/math_expressions.dart';
 
 import 'calculator.dart';

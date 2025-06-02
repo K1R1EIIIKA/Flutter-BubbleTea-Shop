@@ -1,4 +1,4 @@
-import 'cart_page.dart';
+import '../cart/cart_page.dart';
 
 class CartController {
   static final CartController _instance = CartController._internal();

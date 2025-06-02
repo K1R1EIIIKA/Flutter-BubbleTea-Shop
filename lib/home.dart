@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'web_view_page.dart';
+import 'utils/web_view_page.dart';
 
 class HomeView extends StatefulWidget {
   final String username;
