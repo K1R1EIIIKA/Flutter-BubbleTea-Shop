@@ -1,0 +1,7 @@
+#Mon Jun 02 12:36:12 MSK 2025
+base.0=D\:\\Projects\\labs\\composeApp\\build\\intermediates\\dex\\release\\mergeDexRelease\\classes.dex
+base.1=D\:\\Projects\\labs\\composeApp\\build\\intermediates\\dex\\release\\mergeDexRelease\\classes2.dex
+path.0=classes.dex
+path.1=classes2.dex
+renamed.0=classes.dex
+renamed.1=classes2.dex

@@ -1,0 +1,4 @@
+org.example.project.test.composeApp-androidTest-0 D:\Projects\labs\composeApp\build\generated\res\resValues\androidTest\debug
+org.example.project.test.composeApp-mergeDebugAndroidTestResources-1 D:\Projects\labs\composeApp\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
+org.example.project.test.composeApp-mergeDebugAndroidTestResources-2 D:\Projects\labs\composeApp\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
+org.example.project.test.composeApp-debugAndroidTest-3 D:\Projects\labs\composeApp\build\intermediates\merged_res\debugAndroidTest\mergeDebugAndroidTestResources

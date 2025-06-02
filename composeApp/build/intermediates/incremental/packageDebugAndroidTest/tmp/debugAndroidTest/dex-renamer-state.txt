@@ -1,0 +1,4 @@
+#Mon Jun 02 12:36:02 MSK 2025
+base.0=D\:\\Projects\\labs\\composeApp\\build\\intermediates\\dex\\debugAndroidTest\\mergeProjectDexDebugAndroidTest\\0\\classes.dex
+path.0=0/classes.dex
+renamed.0=classes.dex

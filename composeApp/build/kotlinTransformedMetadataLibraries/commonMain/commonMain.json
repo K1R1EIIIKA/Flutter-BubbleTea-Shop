@@ -1,0 +1,132 @@
+[
+  {
+    "moduleId": "module org.jetbrains.kotlin:kotlin-stdlib:2.1.21",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.kotlin-kotlin-stdlib-2.1.21-commonMain-uBNgdg.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.runtime:runtime:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.runtime-runtime-1.8.1-commonMain-jWWnJg.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.foundation:foundation:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.foundation-foundation-1.8.1-commonMain-zZs6kQ.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.material3:material3:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.material3-material3-1.8.1-commonMain-IWEVXQ.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.ui:ui:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.ui-ui-1.8.1-commonMain-EpcjWg.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.components:components-resources:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.components-components-resources-1.8.1-blockingMain-Wrum6g.klib",
+    "sourceSetName": "blockingMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.components:components-resources:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.components-components-resources-1.8.1-commonMain-Wrum6g.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.components:components-ui-tooling-preview:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.components-components-ui-tooling-preview-1.8.1-commonMain-LZ3_kQ.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.9.0",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.androidx.lifecycle-lifecycle-viewmodel-2.9.0-commonMain-7L6hhQ.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.9.0",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.androidx.lifecycle-lifecycle-runtime-compose-2.9.0-commonMain-x0dbzQ.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.kotlinx-kotlinx-coroutines-core-1.10.2-concurrentMain-wJOvIw.klib",
+    "sourceSetName": "concurrentMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.kotlinx-kotlinx-coroutines-core-1.10.2-commonMain-wJOvIw.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.animation:animation:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.animation-animation-1.8.1-commonMain-hDRn4A.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.material:material-ripple:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.material-material-ripple-1.8.1-commonMain-fA0Fvg.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.ui:ui-graphics:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.ui-ui-graphics-1.8.1-commonMain-4mJ79Q.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.ui:ui-text:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.ui-ui-text-1.8.1-commonMain-OvwrHg.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.androidx.lifecycle:lifecycle-common:2.9.0",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.androidx.lifecycle-lifecycle-common-2.9.0-commonMain-VFJLJQ.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.runtime:runtime-saveable:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.runtime-runtime-saveable-1.8.1-commonMain-HY_2Hg.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.ui:ui-geometry:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.ui-ui-geometry-1.8.1-commonMain-1jjAnQ.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.ui:ui-unit:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.ui-ui-unit-1.8.1-commonMain-YP1muA.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.ui:ui-util:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.ui-ui-util-1.8.1-commonMain-TL6JCg.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.annotation-internal:annotation:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.annotation-internal-annotation-1.8.1-commonMain-nX1O7g.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.androidx.lifecycle:lifecycle-runtime:2.9.0",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.androidx.lifecycle-lifecycle-runtime-2.9.0-commonMain-EAV9lg.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.animation:animation-core:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.animation-animation-core-1.8.1-commonMain-2smSyw.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module org.jetbrains.compose.foundation:foundation-layout:1.8.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\org.jetbrains.compose.foundation-foundation-layout-1.8.1-commonMain-Urf8fw.klib",
+    "sourceSetName": "commonMain"
+  },
+  {
+    "moduleId": "module androidx.annotation:annotation:1.9.1",
+    "file": "D:\\Projects\\labs\\composeApp\\build\\kotlinTransformedMetadataLibraries\\commonMain\\androidx.annotation-annotation-1.9.1-commonMain-WmoUwA.klib",
+    "sourceSetName": "commonMain"
+  }
+]
