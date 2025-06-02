@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Strawberry & Cactus",
+    "description": "A refreshing blend of strawberry and cactus flavors, perfect for a hot day.",
+    "imagePath": "assets/img/tea/strawberry_cactus.png",
+    "price": 7.99
+  },
+  {
+    "name": "Mango",
+    "description": "A tropical delight with the sweet taste of ripe mangoes.",
+    "imagePath": "assets/img/tea/mango.png",
+    "price": 6.99
+  },
+  {
+    "name": "Blue Matcha",
+    "description": "A unique and vibrant blue matcha tea, rich in antioxidants.",
+    "imagePath": "assets/img/tea/blue_matcha.png",
+    "price": 6.99
+  },
+  {
+    "name": "Caramel",
+    "description": "A sweet and creamy caramel tea that warms the soul.",
+    "imagePath": "assets/img/tea/caramel.png",
+    "price": 6.99
+  },
+  {
+    "name": "In Bottle",
+    "description": "A convenient bottled drink, perfect for on-the-go refreshment.",
+    "imagePath": "assets/img/tea/bottle.png",
+    "price": 10.99
+  },
+  {
+    "name": "Strawberry",
+    "description": "A classic strawberry tea with a burst of fruity flavor.",
+    "imagePath": "assets/img/tea/strawberry.png",
+    "price": 6.99
+  }
+]

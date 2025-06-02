@@ -1,18 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:labs/shop/cart_page.dart';
+import 'package:labs/shop/drink_item.dart';
+import 'package:labs/utils/json_controller.dart';
+import 'models/Drink.dart';
 
-class ShopView extends StatelessWidget {
+class ShopView extends StatefulWidget {
   const ShopView({Key? key}) : super(key: key);
 
   @override
+  _ShopViewState createState() => _ShopViewState();
+}
+
+class _ShopViewState extends State<ShopView> {
+  late Future<List<Drink>> _futureDrinks;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureDrinks = JsonController().loadFromNetwork<Drink>(
+      url:
+          'https://my-json-server.typicode.com/K1R1EIIIKA/data_resository/drinks',
+      fromJson: (json) => Drink.fromJson(json),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        color: const Color(0xFFF2D8B0),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: SafeArea(
+        child: Scaffold(
+          backgroundColor: const Color(0xFFF2D8B0),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFFF2D8B0),
+            elevation: 0,
+            title: const Text(
               'Bubble Tea',
               style: TextStyle(
                 fontSize: 28,
@@ -20,85 +42,45 @@ class ShopView extends StatelessWidget {
                 color: Color(0xFF5D3A00),
               ),
             ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView(
-                children: const [
-                  DrinkItem(
-                    imagePath: 'assets/img/tea/strawberry_cactus.png',
-                    name: 'Strawberry & Cactus',
-                    price: '\$6.99',
-                  ),
-                  DrinkItem(
-                    imagePath: 'assets/img/tea/mango.png',
-                    name: 'Mango',
-                    price: '\$6.99',
-                  ),
-                  DrinkItem(
-                    imagePath: 'assets/img/tea/blue_matcha.png',
-                    name: 'Blue Matcha',
-                    price: '\$6.99',
-                  ),
-                  DrinkItem(
-                    imagePath: 'assets/img/tea/caramel.png',
-                    name: 'Caramel',
-                    price: '\$6.99',
-                  ),
-                ],
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart, color: Color(0xFF5D3A00)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CartPage()),
+                  );
+                },
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class DrinkItem extends StatelessWidget {
-  final String imagePath;
-  final String name;
-  final String price;
-
-  const DrinkItem({
-    Key? key,
-    required this.imagePath,
-    required this.name,
-    required this.price,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Image.asset(imagePath, width: 70),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 18,
-                    color: Color(0xFF5D3A00),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  price,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF5D3A00),
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-          const Icon(Icons.shopping_bag_outlined, color: Color(0xFF5D3A00), size: 28),
-        ],
+          body: FutureBuilder<List<Drink>>(
+            future: _futureDrinks,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(child: Text('No drinks available'));
+              }
+
+              final drinks = snapshot.data!;
+              return ListView.builder(
+                itemCount: drinks.length,
+                itemBuilder: (context, index) {
+                  final drink = drinks[index];
+                  return DrinkItem(
+                    imagePath: drink.imagePath,
+                    name: drink.name,
+                    description: drink.description,
+                    price: drink.price.toStringAsFixed(2),
+                  );
+                },
+              );
+            },
+          ),
+        ),
       ),
     );
   }

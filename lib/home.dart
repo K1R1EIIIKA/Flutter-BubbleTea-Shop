@@ -21,26 +21,95 @@ class _HomeViewState extends State<HomeView> {
     });
   }
 
+  final Map<String, List<String>> topicUrls = {
+    'игры': [
+      'https://store.steampowered.com',
+      'https://itch.io',
+      'https://www.gog.com',
+    ],
+    'новости': [
+      'https://www.bbc.com',
+      'https://meduza.io',
+      'https://lenta.ru',
+    ],
+    'фильмы': [
+      'https://www.kinopoisk.ru',
+      'https://www.imdb.com',
+      'https://www.netflix.com',
+    ],
+    'музыка': [
+      'https://www.last.fm',
+      'https://music.yandex.ru',
+      'https://www.spotify.com',
+    ],
+    'книги': [
+      'https://www.litres.ru',
+      'https://www.ozon.ru',
+      'https://www.amazon.com/books',
+    ],
+    'спорт': [
+      'https://www.sports.ru',
+      'https://www.espn.com',
+      'https://www.olympic.org',
+    ],
+    'технологии': [
+      'https://www.techcrunch.com',
+      'https://www.theverge.com',
+      'https://www.wired.com',
+    ],
+    'еда': [
+      'https://www.foodnetwork.com',
+      'https://www.allrecipes.com',
+      'https://www.bbcgoodfood.com',
+    ],
+    'путешествия': [
+      'https://www.tripadvisor.com',
+      'https://www.booking.com',
+      'https://www.airbnb.com',
+    ],
+    'искусство': [
+      'https://www.artstation.com',
+      'https://www.deviantart.com',
+      'https://www.behance.net',
+    ],
+    'наука': [
+      'https://www.nature.com',
+      'https://www.sciencemag.org',
+      'https://www.sciencedirect.com',
+    ],
+    'финансы': [
+      'https://www.forbes.com',
+      'https://www.investopedia.com',
+      'https://www.moneycontrol.com',
+    ],
+    'здоровье': [
+      'https://www.webmd.com',
+      'https://www.healthline.com',
+      'https://www.mayoclinic.org',
+    ],
+    'образование': [
+      'https://www.khanacademy.org',
+      'https://www.coursera.org',
+      'https://www.edx.org',
+    ],
+    'животные': [
+      'https://www.nationalgeographic.com/animals',
+      'https://www.worldwildlife.org',
+      'https://www.animalplanet.com',
+    ],
+  };
+
   List<String> _generateUrls(String topic) {
-    if (topic.contains('игры')) {
-      return [
-        'https://store.steampowered.com',
-        'https://itch.io',
-        'https://www.gog.com',
-      ];
-    } else if (topic.contains('новости')) {
-      return [
-        'https://www.bbc.com',
-        'https://meduza.io',
-        'https://lenta.ru',
-      ];
-    } else {
-      return [
-        'https://google.com/search?q=$topic',
-        'https://duckduckgo.com/?q=$topic',
-        'https://www.wikipedia.org',
-      ];
+    for (final entry in topicUrls.entries) {
+      if (topic.contains(entry.key)) {
+        return entry.value;
+      }
     }
+    return [
+      'https://google.com/search?q=$topic',
+      'https://duckduckgo.com/?q=$topic',
+      'https://yandex.ru/search/?text=$topic',
+    ];
   }
 
   @override
