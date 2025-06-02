@@ -26,15 +26,15 @@ class MyApp extends StatelessWidget {
         // как в предыдущем макете (без лишних splash-эффектов).
         splashFactory: NoSplash.splashFactory,
       ),
-      home: const MainPage(),
+      home: const LoginScreen(),
     );
   }
 }
 
-/// MainPage — это Scaffold с Drawer (слева) и IndexedStack (тело).
-/// Нижняя панель (CupertinoTabBar) отображается только при переходе на Shop или Calc.
 class MainPage extends StatefulWidget {
-  const MainPage({Key? key}) : super(key: key);
+  final String username;
+
+  const MainPage({Key? key, required this.username}) : super(key: key);
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -47,12 +47,18 @@ class _MainPageState extends State<MainPage> {
   static const Color _bgColor = Color(0xFFF2D8B0);
 
   /// Псевдо-список: HomeView, ShopView, CalculatorView
-  final List<Widget> _pages = const [
-    HomeView(),
-    ShopView(),
-    CalculatorView(),
-    LoginScreen(),
-  ];
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomeView(username: widget.username),
+      const ShopView(),
+      const CalculatorView(),
+    ];
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +170,6 @@ class _MainPageState extends State<MainPage> {
             icon: Icon(CupertinoIcons.plus_app_fill),
             label: 'Calc',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.login), label: 'Login'),
         ],
       ),
     );

@@ -1,6 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import 'main.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
@@ -118,8 +120,33 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 52,
                   child: ElevatedButton(
                     onPressed: () {
-                      // TODO: сюда логику входа (валидация, API-вызов и т.п.)
+                      final username = _usernameController.text;
+                      final password = _passwordController.text;
+
+                      if (username == '12345' && password == '12345') {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MainPage(username: username),
+                          ),
+                        );
+                      } else {
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Ошибка'),
+                            content: const Text('Неверный логин или пароль'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('ОК'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
                     },
+
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _buttonColor,
                       shape: RoundedRectangleBorder(
