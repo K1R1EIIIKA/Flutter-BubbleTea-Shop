@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../cart/cart_controller.dart';
 import '../cart/cart_page.dart';
 
@@ -75,29 +76,34 @@ class DrinkDetailPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(40),
                   ),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 16),
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
                 ),
                 onPressed: () {
                   CartController().addItem(
                     CartItem(
                       imagePath: imagePath,
                       name: name,
+                      description: description,
                       price: numericPrice,
-                    ),
+                    ), // передаём флаг что добавили
                   );
-
+                  Navigator.pop(context, true);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('Added to cart'),
-                        duration: Duration(seconds: 1)
+                      content: Text('Added to cart'),
+                      duration: Duration(seconds: 1),
                     ),
                   );
                 },
                 child: const Text(
                   'Add to cart',
-                  style: TextStyle(fontSize: 18,
-                      color: Color(0xFFF2D8B0),
-                      fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Color(0xFFF2D8B0),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'utils/web_view_page.dart';
+import 'package:labs/auth/account_manager.dart';
+import 'package:labs/utils/web_view_page.dart';
 
-class HomeView extends StatefulWidget {
-  final String username;
 
-  const HomeView({super.key, required this.username});
+class SearchView extends StatefulWidget {
+
+  const SearchView({super.key});
 
   @override
-  State<HomeView> createState() => _HomeViewState();
+  State<SearchView> createState() => _SearchViewState();
 }
 
-class _HomeViewState extends State<HomeView> {
+class _SearchViewState extends State<SearchView> {
   final TextEditingController _topicController = TextEditingController();
   List<String> _urls = [];
 
@@ -114,47 +115,72 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text('Привет, ${widget.username}!', style: const TextStyle(fontSize: 20)),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _topicController,
-              decoration: const InputDecoration(
-                labelText: 'Введите тему',
-                border: OutlineInputBorder(),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF2D8B0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF2D8B0),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF5D3A00)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Search',
+          style: TextStyle(
+            color: Color(0xFF5D3A00),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Text('Hi, ${AccountManager().username}!',
+                  style: const TextStyle(fontSize: 20)),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _topicController,
+                decoration: const InputDecoration(
+                  labelText: 'Enter a topic',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _search,
-              child: const Text('Показать сайты'),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _urls.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(_urls[index]),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => WebViewPage(url: _urls[index]),
-                        ),
-                      );
-                    },
-                  );
-                },
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: _search,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF5D3A00),
+                  foregroundColor: const Color(0xFFF2D8B0),
+                ),
+                child: const Text('Search'),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _urls.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(_urls[index]),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => WebViewPage(url: _urls[index]),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-}
+
+  }
+

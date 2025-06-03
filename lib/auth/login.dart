@@ -1,7 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:labs/auth/account_manager.dart';
+import 'package:labs/base/main.dart';
+import 'package:labs/shop/shop.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../main.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -119,16 +123,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: () {
-                      final username = _usernameController.text;
-                      final password = _passwordController.text;
+                    onPressed: () async {
+                      final username = _usernameController.text.trim();
+                      final password = _passwordController.text.trim();
 
-                      if (username == '12345' && password == '12345') {
+                      final prefs = await SharedPreferences.getInstance();
+                      final users = prefs.getStringList('users') ?? [];
+
+                      //print users
+                      print('Users: $users');
+                      final userExists = users.any((entry) {
+                        final parts = entry.split('|');
+                        return parts.length == 2 && parts[0] == username && parts[1] == password;
+                      });
+
+                      if (userExists) {
+                        AccountManager().username = username;
+                        await prefs.setBool('is_logged_in', true);
+                        await prefs.setString('username', username);
+
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => MainPage(username: username),
-                          ),
+                          MaterialPageRoute(builder: (_) => MainPage()),
                         );
                       } else {
                         showDialog(
@@ -246,7 +262,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
-                            // TODO: навигация на экран регистрации
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                            );
                           },
                       ),
                     ],

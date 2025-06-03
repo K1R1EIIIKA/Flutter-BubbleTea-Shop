@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:labs/cart/cart_page.dart';
+import 'package:labs/base/settings.dart';
 import 'package:labs/shop/drink_item.dart';
 import 'package:labs/utils/json_controller.dart';
+
 import '../models/Drink.dart';
 
 class ShopView extends StatefulWidget {
@@ -9,10 +10,22 @@ class ShopView extends StatefulWidget {
 
   @override
   _ShopViewState createState() => _ShopViewState();
+
+  void updateShop() => _ShopViewState().updateShop();
 }
 
 class _ShopViewState extends State<ShopView> {
   late Future<List<Drink>> _futureDrinks;
+
+  void updateShop() {
+    setState(() {
+      _futureDrinks = JsonController().loadFromNetwork<Drink>(
+        url:
+            'https://my-json-server.typicode.com/K1R1EIIIKA/data_resository/drinks',
+        fromJson: (json) => Drink.fromJson(json),
+      );
+    });
+  }
 
   @override
   void initState() {
@@ -44,11 +57,11 @@ class _ShopViewState extends State<ShopView> {
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.shopping_cart, color: Color(0xFF5D3A00)),
+                icon: const Icon(Icons.settings, color: Color(0xFF5D3A00)),
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const CartPage()),
+                    MaterialPageRoute(builder: (_) => SettingsView()),
                   );
                 },
               ),

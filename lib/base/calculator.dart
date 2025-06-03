@@ -229,24 +229,36 @@ class _CalculatorViewState extends State<CalculatorView> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            const Text(
-              'Calculator',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 20),
-            _buildDisplay(),
-            const SizedBox(height: 24),
-            Expanded(child: _buildKeypad()),
-          ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF2D8B0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF2D8B0),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF5D3A00)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Calculator',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF5D3A00),
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDisplay(),
+              const SizedBox(height: 24),
+              Expanded(child: _buildKeypad()),
+            ],
+          ),
         ),
       ),
     );
-  }
+}
 }
