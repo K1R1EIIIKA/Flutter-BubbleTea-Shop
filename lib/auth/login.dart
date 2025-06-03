@@ -5,6 +5,7 @@ import 'package:labs/base/main.dart';
 import 'package:labs/shop/shop.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'recover_password.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -103,8 +104,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     onPressed: () {
-                      // TODO: сюда логику восстановления пароля
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const RecoverPasswordScreen()),
+                      );
                     },
+
                     child: const Text(
                       'Forgot Password?',
                       style: TextStyle(
