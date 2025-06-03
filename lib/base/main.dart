@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:labs/auth/account_manager.dart';
@@ -6,6 +7,7 @@ import 'package:labs/cart/cart_page.dart';
 import 'package:labs/shop/shop.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../firebase_options.dart';
 import 'settings.dart';
 
 void main() async {
@@ -17,6 +19,11 @@ void main() async {
   if (username.isNotEmpty) {
     AccountManager().username = username;
   }
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
 
   runApp(MyApp(initialRoute: loggedIn ? 'main' : 'login', username: username));
 }

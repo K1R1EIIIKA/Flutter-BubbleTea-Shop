@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:labs/auth/account_manager.dart';
 import 'package:labs/base/main.dart';
 import 'package:labs/shop/shop.dart';
@@ -29,6 +31,41 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color _textLight = Color(
     0xFFF5E8D0,
   ); // светлый текст (на кнопках)
+
+  Future<void> signInWithGoogle() async {
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+    if (googleUser == null) return; // пользователь отменил
+
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    final user = userCredential.user;
+
+    print(111111111111);
+    if (user != null) {
+      print(2222222222);
+      // Успешный вход
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setString('username', user.displayName ?? user.email ?? 'Google User');
+
+      AccountManager().username = user.displayName ?? user.email ?? 'Google User';
+
+      // Переход в MainPage
+      // ignore: use_build_context_synchronously
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MainPage()),
+      );
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -229,9 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 32,
                         height: 32,
                       ),
-                      onTap: () {
-                        // TODO: логика входа через Google
-                      },
+                      onTap: () => signInWithGoogle(),
                     ),
                     _buildSocialButton(
                       icon: Image.asset(
