@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:labs/auth/account_manager.dart';
 import 'package:labs/base/main.dart';
-import 'package:labs/shop/shop.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'recover_password.dart';
@@ -37,14 +36,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (googleUser == null) return; // пользователь отменил
 
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
 
     final credential = GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
 
-    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(
+      credential,
+    );
     final user = userCredential.user;
 
     print(111111111111);
@@ -53,9 +55,13 @@ class _LoginScreenState extends State<LoginScreen> {
       // Успешный вход
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_logged_in', true);
-      await prefs.setString('username', user.displayName ?? user.email ?? 'Google User');
+      await prefs.setString(
+        'username',
+        user.displayName ?? user.email ?? 'Google User',
+      );
 
-      AccountManager().username = user.displayName ?? user.email ?? 'Google User';
+      AccountManager().username =
+          user.displayName ?? user.email ?? 'Google User';
 
       // Переход в MainPage
       // ignore: use_build_context_synchronously
@@ -65,7 +71,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +148,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const RecoverPasswordScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const RecoverPasswordScreen(),
+                        ),
                       );
                     },
 
@@ -176,7 +183,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       print('Users: $users');
                       final userExists = users.any((entry) {
                         final parts = entry.split('|');
-                        return parts.length == 2 && parts[0] == username && parts[1] == password;
+                        return parts.length == 2 &&
+                            parts[0] == username &&
+                            parts[1] == password;
                       });
 
                       if (userExists) {
@@ -275,7 +284,21 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 32,
                       ),
                       onTap: () {
-                        // TODO: логика входа через Apple
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Недоступно'),
+                            content: const Text(
+                              'Вход через Apple доступен только с активной подпиской Apple Developer Program.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('ОК'),
+                              ),
+                            ],
+                          ),
+                        );
                       },
                     ),
                   ],
@@ -304,7 +327,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ..onTap = () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
                             );
                           },
                       ),
