@@ -12,6 +12,7 @@ import 'settings.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   final prefs = await SharedPreferences.getInstance();
   final loggedIn = prefs.getBool('is_logged_in') ?? false;
   final username = prefs.getString('username') ?? '';
@@ -23,7 +24,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
 
   runApp(MyApp(initialRoute: loggedIn ? 'main' : 'login', username: username));
 }
