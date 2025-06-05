@@ -10,12 +10,12 @@ class DrinkDetailPage extends StatelessWidget {
   final String price;
 
   const DrinkDetailPage({
-    Key? key,
+    super.key,
     required this.imagePath,
     required this.name,
     required this.description,
     required this.price,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

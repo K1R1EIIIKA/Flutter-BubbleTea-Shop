@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:math_expressions/math_expressions.dart';
 
 class CalculatorView extends StatefulWidget {
-  const CalculatorView({Key? key}) : super(key: key);
+  const CalculatorView({super.key});
 
   @override
   State<CalculatorView> createState() => _CalculatorViewState();

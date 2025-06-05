@@ -10,7 +10,7 @@ import 'recover_password.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -49,10 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     final user = userCredential.user;
 
-    print(111111111111);
     if (user != null) {
-      print(2222222222);
-      // Успешный вход
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_logged_in', true);
       await prefs.setString(

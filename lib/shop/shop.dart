@@ -6,7 +6,7 @@ import 'package:labs/utils/json_controller.dart';
 import '../models/Drink.dart';
 
 class ShopView extends StatefulWidget {
-  const ShopView({Key? key}) : super(key: key);
+  const ShopView({super.key});
 
   @override
   _ShopViewState createState() => _ShopViewState();
