@@ -1,14 +1,18 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:labs/auth/account_manager.dart';
-import 'package:labs/auth/login.dart';
-import 'package:labs/cart/cart_page.dart';
-import 'package:labs/shop/shop.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:labs/core/di/injection_container.dart' as di;
+import 'package:labs/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:labs/features/auth/presentation/pages/login_page.dart';
+import 'package:labs/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:labs/features/shop/presentation/bloc/shop_cubit.dart';
+import 'package:labs/features/shop/presentation/pages/shop_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../features/cart/presentation/pages/cart_page.dart';
+import '../features/shop/presentation/pages/drink_detail_page.dart';
 import '../firebase_options.dart';
-import 'settings.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,38 +21,69 @@ void main() async {
   final loggedIn = prefs.getBool('is_logged_in') ?? false;
   final username = prefs.getString('username') ?? '';
 
-  if (username.isNotEmpty) {
-    AccountManager().username = username;
-  }
+  await di.init();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  runApp(MyApp(initialRoute: loggedIn ? 'main' : 'login', username: username));
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final String initialRoute;
-  final String username;
-
-  const MyApp({super.key, required this.initialRoute, required this.username});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Bubble Tea App',
-      theme: ThemeData(splashFactory: NoSplash.splashFactory),
-      home: initialRoute == 'main'
-          ? MainPage()
-          : const LoginScreen(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<CartCubit>(create: (_) => di.sl<CartCubit>()),
+        BlocProvider<ShopCubit>(create: (_) => di.sl<ShopCubit>()),
+        BlocProvider<AuthCubit>(
+          create: (_) => di.sl<AuthCubit>()..checkLoggedIn(),
+        ),
+        // если есть
+        // BlocProvider<AuthCubit>(create: (_) => di.sl<AuthCubit>()), // и т. д.
+      ],
+      child: MaterialApp(
+        title: 'Ваше приложение',
+        debugShowCheckedModeBanner: false,
+        initialRoute: '/', // Вот тут корневой экран
+        routes: {
+          '/': (_) => const RootPage(),
+          '/login': (_) => const LoginPage(),
+          '/cart': (_) => const CartPage(),
+          '/shop': (_) => const ShopPage(),
+          '/drink_detail': (_) => const DrinkDetailPage(),
+          // '/login': (_) => const LoginPage(),
+          // … остальные маршруты
+        },
+      ),
+    );
+  }
+}
+
+class RootPage extends StatelessWidget {
+  const RootPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthCubit, AuthState>(
+      builder: (context, state) {
+        if (state is AuthAuthenticated) {
+          return const MainPage();
+        } else if (state is AuthInitial || state is AuthError) {
+          return const LoginPage();
+        } else {
+          // loading
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+      },
     );
   }
 }
 
 class MainPage extends StatefulWidget {
-
   const MainPage({super.key});
 
   @override
@@ -61,10 +96,7 @@ class _MainPageState extends State<MainPage> {
   static const Color _bgColor = Color(0xFFF2D8B0);
   static const Color _darkerBgColor = Color(0xFFEACDA2);
 
-  List<Widget> get _pages => [
-    const ShopView(),
-    const CartPage(),
-  ];
+  List<Widget> get _pages => [const ShopPage(), const CartPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +109,10 @@ class _MainPageState extends State<MainPage> {
             children: [
               Container(
                 color: Colors.indigo,
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 16,
+                ),
                 child: const Text(
                   'Меню',
                   style: TextStyle(
@@ -86,15 +121,6 @@ class _MainPageState extends State<MainPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('Settings'),
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => SettingsView(),
-                  ));
-                },
               ),
             ],
           ),
@@ -113,8 +139,14 @@ class _MainPageState extends State<MainPage> {
           });
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(CupertinoIcons.cart_fill), label: 'Shop'),
-          BottomNavigationBarItem(icon: Icon(CupertinoIcons.cart_fill_badge_plus), label: 'Cart'),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.cart_fill),
+            label: 'Shop',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.cart_fill_badge_plus),
+            label: 'Cart',
+          ),
         ],
       ),
     );
