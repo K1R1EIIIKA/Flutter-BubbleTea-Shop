@@ -1,134 +1,139 @@
 import 'package:flutter/material.dart';
-import 'package:labs/features/cart/domain/entities/cart_item_entity.dart';
-import 'package:labs/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:labs/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:labs/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:labs/features/cart/presentation/bloc/cart_state.dart';
 
-class CartPage extends StatefulWidget {
+class CartPage extends StatelessWidget {
   const CartPage({Key? key}) : super(key: key);
 
   @override
-  State<CartPage> createState() => _CartPageState();
-}
-
-class _CartPageState extends State<CartPage> {
-  @override
-  void initState() {
-    super.initState();
-    // При открытии страницы загружаем содержимое корзины
-    context.read<CartCubit>().loadCart();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final bgColor = const Color(0xFFFCE5CC);
+    final brown = const Color(0xFF7A4F23);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Корзина')),
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: bgColor,
+        elevation: 0,
+        title: const Text(
+          'Cart',
+          style: TextStyle(color: Color(0xFF7A4F23), fontWeight: FontWeight.bold),
+        ),
+      ),
       body: BlocBuilder<CartCubit, CartState>(
         builder: (context, state) {
-          if (state is CartLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is CartLoaded) {
-            if (state.items.isEmpty) {
+          if (state is CartLoaded) {
+            final items = state.items;
+            final total = state.totalPrice;
+
+            if (items.isEmpty) {
               return const Center(child: Text('Корзина пуста'));
             }
 
             return Column(
               children: [
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: state.items.length,
-                    itemBuilder: (ctx, index) {
-                      return _CartItemTile(
-                        cartItem: state.items[index],
-                        onRemove: () {
-                          context
-                              .read<CartCubit>()
-                              .removeDrink(state.items[index].drink);
-                        },
-                      );
-                    },
+                ...items.map((cartItem) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  child: Row(
+                    children: [
+                      Image.asset(cartItem.drink.imagePath, height: 60),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: Text(
+                          cartItem.drink.name,
+                          style: const TextStyle(
+                            color: Color(0xFF7A4F23),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => context.read<CartCubit>().removeDrink(cartItem.drink),
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: Color(0xFF7A4F23), size: 24),
+                      ),
+                      Text(
+                        '${cartItem.quantity}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Color(0xFF7A4F23),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => context.read<CartCubit>().addDrink(cartItem.drink),
+                        icon: const Icon(Icons.add_circle_outline,
+                            color: Color(0xFF7A4F23), size: 24),
+                      ),
+                      Text(
+                        '\$${(cartItem.drink.price * cartItem.quantity).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Color(0xFF7A4F23),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+                const Spacer(),
+                const Divider(height: 1, thickness: 1, color: Color(0xFFDCC3A4)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total',
+                        style: TextStyle(
+                          color: Color(0xFFBCA47C),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                      Text(
+                        '\$${total.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Color(0xFF7A4F23),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                _CartTotalBar(totalPrice: state.totalPrice),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 18),
+                  child: ElevatedButton(
+                    onPressed: items.isNotEmpty ? () {} : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: brown,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      minimumSize: const Size(220, 52),
+                    ),
+                    child: const Text(
+                      'Checkout',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                )
               ],
             );
           } else if (state is CartError) {
-            return Center(child: Text('Ошибка: ${state.message}'));
+            return Center(child: Text(state.message));
           } else {
-            // CartInitial (или любое неожиданное)
             return const SizedBox.shrink();
           }
         },
-      ),
-    );
-  }
-}
-
-/// Виджет для отображения одной позиции в корзине
-class _CartItemTile extends StatelessWidget {
-  final CartItemEntity cartItem;
-  final VoidCallback onRemove;
-
-  const _CartItemTile({
-    Key? key,
-    required this.cartItem,
-    required this.onRemove,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final drink = cartItem.drink;
-    return ListTile(
-      leading: Image.asset(
-        drink.imagePath,
-        width: 50,
-        height: 50,
-        fit: BoxFit.cover,
-      ),
-      title: Text(drink.name),
-      subtitle: Text(
-        'Цена: ${drink.price.toStringAsFixed(2)} ₽\n'
-            'Количество: ${cartItem.quantity}',
-      ),
-      isThreeLine: true,
-      trailing: IconButton(
-        icon: const Icon(Icons.delete_outline),
-        onPressed: onRemove,
-      ),
-    );
-  }
-}
-
-/// Виджет для отображения итоговой суммы и кнопки оформления
-class _CartTotalBar extends StatelessWidget {
-  final double totalPrice;
-
-  const _CartTotalBar({Key? key, required this.totalPrice}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Итого: ${totalPrice.toStringAsFixed(2)} ₽',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // Здесь обработать «оформление заказа»
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Переход к оплате…')),
-              );
-            },
-            child: const Text('Оформить заказ'),
-          ),
-        ],
       ),
     );
   }

@@ -76,10 +76,6 @@ Future<void> init() async {
   /// === Cubit (Presentation) для корзины ===
   sl.registerFactory<CartCubit>(
     () => CartCubit(
-      getCartItemsUseCase: sl(),
-      addToCartUseCase: sl(),
-      removeFromCartUseCase: sl(),
-      getTotalPriceUseCase: sl(),
     ),
   );
 

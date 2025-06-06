@@ -1,3 +1,5 @@
+
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -7,11 +9,11 @@ import 'package:labs/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:labs/features/auth/presentation/pages/login_page.dart';
 import 'package:labs/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:labs/features/shop/presentation/bloc/shop_cubit.dart';
-import 'package:labs/features/shop/presentation/pages/shop_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/cart/presentation/pages/cart_page.dart';
-import '../features/shop/presentation/pages/drink_detail_page.dart';
+import '../features/shop/presentation/pages/drink_detail_page.dart' hide DrinkDetailPage;
+import '../features/shop/presentation/pages/shop_page.dart';
 import '../firebase_options.dart';
 
 void main() async {
@@ -36,7 +38,7 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<CartCubit>(create: (_) => di.sl<CartCubit>()),
-        BlocProvider<ShopCubit>(create: (_) => di.sl<ShopCubit>()),
+        BlocProvider<ShopCubit>(create: (_) => di.sl<ShopCubit>()..loadDrinks()),
         BlocProvider<AuthCubit>(
           create: (_) => di.sl<AuthCubit>()..checkLoggedIn(),
         ),
@@ -52,7 +54,6 @@ class MyApp extends StatelessWidget {
           '/login': (_) => const LoginPage(),
           '/cart': (_) => const CartPage(),
           '/shop': (_) => const ShopPage(),
-          '/drink_detail': (_) => const DrinkDetailPage(),
           // '/login': (_) => const LoginPage(),
           // … остальные маршруты
         },
