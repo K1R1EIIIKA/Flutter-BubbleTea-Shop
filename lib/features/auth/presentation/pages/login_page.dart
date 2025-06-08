@@ -110,17 +110,6 @@ class _LoginPageState extends State<LoginPage> {
                         onSaved: (v) => _password = v ?? '',
                       ),
                       const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _forgotPassword,
-                          child: const Text(
-                            'Forgot Password?',
-                            style: TextStyle(color: Color(0xFFBCA47C)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(

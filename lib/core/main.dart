@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:labs/core/di/injection_container.dart' as di;
 import 'package:labs/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:labs/features/auth/presentation/pages/login_page.dart';
+import 'package:labs/features/auth/presentation/pages/register_page.dart';
 import 'package:labs/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:labs/features/shop/presentation/bloc/shop_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -54,6 +55,7 @@ class MyApp extends StatelessWidget {
           '/login': (_) => const LoginPage(),
           '/cart': (_) => const CartPage(),
           '/shop': (_) => const ShopPage(),
+          '/register': (_) => const RegisterPage(), // или другой экран регистрации
           // '/login': (_) => const LoginPage(),
           // … остальные маршруты
         },
