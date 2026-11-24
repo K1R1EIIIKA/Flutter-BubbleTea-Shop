@@ -6,12 +6,20 @@ class DrinkModel {
   final String description;
   final String imagePath;
   final double price;
+  final String? displayName;
+  final String? displayDescription;
+  final DrinkCategory? category;
+  final bool popular;
 
   DrinkModel({
     required this.name,
     required this.description,
     required this.imagePath,
     required this.price,
+    this.displayName,
+    this.displayDescription,
+    this.category,
+    this.popular = false,
   });
 
   factory DrinkModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +28,12 @@ class DrinkModel {
       description: json['description'] as String,
       imagePath: json['imagePath'] as String,
       price: (json['price'] as num).toDouble(),
+      displayName: json['nameRu'] as String?,
+      displayDescription: json['descriptionRu'] as String?,
+      category: DrinkCategory.values
+          .where((category) => category.name == json['category'])
+          .firstOrNull,
+      popular: json['popular'] == true,
     );
   }
 
@@ -30,6 +44,10 @@ class DrinkModel {
       description: description,
       imagePath: imagePath,
       price: price,
+      displayName: displayName,
+      displayDescription: displayDescription,
+      category: category,
+      popular: popular,
     );
   }
 }

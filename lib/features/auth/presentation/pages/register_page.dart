@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:labs/features/auth/presentation/bloc/auth_cubit.dart';
+
+import '../../../../core/shop_icon_button.dart';
+import '../bloc/auth_cubit.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({Key? key}) : super(key: key);
+  const RegisterPage({super.key});
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -11,172 +13,149 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
-  String _username = '';
-  String _email = '';
-  String _password = '';
-  bool _isObscure = true;
+  final _username = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  bool _obscure = true;
+  String? _error;
+
+  @override
+  void dispose() {
+    _username.dispose();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
 
   void _submit() {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      context.read<AuthCubit>().register(
-        _username.trim(),
-        _email.trim(),
-        _password.trim(),
+    final auth = context.read<AuthCubit>();
+    if (auth.state is! AuthLoading && _formKey.currentState!.validate()) {
+      auth.register(
+        _username.text.trim(),
+        _email.text.trim(),
+        _password.text.trim(),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = const Color(0xFFFCE5CC);
-    final brown = const Color(0xFF7A4F23);
-    final accent = const Color(0xFFBCA47C);
-
     return Scaffold(
-      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF7A4F23)),
-        title: const Text(
-          'Регистрация',
-          style: TextStyle(
-            color: Color(0xFF7A4F23),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
+        leading: const ShopBackButton(),
+        title: const Text('Регистрация'),
       ),
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
-          if (state is AuthAuthenticated) {
-            Navigator.of(context).pushReplacementNamed('/');
-          } else if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
+          if (state is AuthAuthenticated &&
+              ModalRoute.of(context)?.isCurrent == true) {
+            Navigator.of(context).popUntil(
+              (route) => route.settings.name == '/profile' || route.isFirst,
             );
+          } else if (state is AuthError) {
+            setState(() => _error = state.message);
+          } else if (state is AuthLoading) {
+            setState(() => _error = null);
           }
         },
         builder: (context, state) {
-          return Center(
-            child: SingleChildScrollView(
-              child: Container(
-                padding: const EdgeInsets.all(32),
-                margin: const EdgeInsets.symmetric(horizontal: 18),
-                decoration: BoxDecoration(
-
-                  borderRadius: BorderRadius.circular(36),
-                  boxShadow: [
-                    BoxShadow(
-                      color: brown.withOpacity(0.13),
-                      blurRadius: 24,
-                      spreadRadius: 4,
-                      offset: const Offset(0, 8),
+          final busy = state is AuthLoading;
+          return SafeArea(
+            top: false,
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: AutofillGroup(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _username,
+                            enabled: !busy,
+                            autofillHints: const [AutofillHints.newUsername],
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Логин',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                ? 'Введите логин'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _email,
+                            enabled: !busy,
+                            keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.email],
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Электронная почта',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Введите электронную почту';
+                              }
+                              if (!RegExp(
+                                r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+                              ).hasMatch(value.trim())) {
+                                return 'Проверьте адрес почты';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _password,
+                            enabled: !busy,
+                            obscureText: _obscure,
+                            autofillHints: const [AutofillHints.newPassword],
+                            onFieldSubmitted: (_) => _submit(),
+                            decoration: InputDecoration(
+                              labelText: 'Пароль',
+                              border: const OutlineInputBorder(),
+                              suffixIcon: ShopIconButton(
+                                label: _obscure
+                                    ? 'Показать пароль'
+                                    : 'Скрыть пароль',
+                                icon: Icon(
+                                  _obscure
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                ),
+                                onPressed: () =>
+                                    setState(() => _obscure = !_obscure),
+                              ),
+                            ),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                ? 'Введите пароль'
+                                : null,
+                          ),
+                          if (_error case final error?)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Semantics(
+                                liveRegion: true,
+                                child: Text(error),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: busy ? null : _submit,
+                            child: Text(
+                              busy ? 'Создаём аккаунт…' : 'Создать аккаунт',
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        "Регистрация",
-                        style: TextStyle(
-                          color: Color(0xFF7A4F23),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 26,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: bgColor,
-                          labelText: 'Логин',
-                          labelStyle: TextStyle(color: brown),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
-                          prefixIcon: Icon(Icons.person, color: accent),
-                        ),
-                        onSaved: (v) => _username = v ?? '',
-                        validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Введите логин' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: bgColor,
-                          labelText: 'Email',
-                          labelStyle: TextStyle(color: brown),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
-                          prefixIcon: Icon(Icons.email, color: accent),
-                        ),
-                        onSaved: (v) => _email = v ?? '',
-                        validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Введите email' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: bgColor,
-                          labelText: 'Пароль',
-                          labelStyle: TextStyle(color: brown),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
-                          prefixIcon: Icon(Icons.lock, color: accent),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _isObscure ? Icons.visibility : Icons.visibility_off,
-                              color: accent,
-                            ),
-                            onPressed: () =>
-                                setState(() => _isObscure = !_isObscure),
-                          ),
-                        ),
-                        obscureText: _isObscure,
-                        onSaved: (v) => _password = v ?? '',
-                        validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Введите пароль' : null,
-                      ),
-                      const SizedBox(height: 26),
-                      (state is AuthLoading)
-                          ? const CircularProgressIndicator()
-                          : SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: brown,
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                          ),
-                          onPressed: _submit,
-                          child: const Text(
-                            'Зарегистрироваться',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),

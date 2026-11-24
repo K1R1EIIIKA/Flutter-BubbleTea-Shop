@@ -3,6 +3,7 @@ import 'package:labs/features/shop/domain/entities/drink_entity.dart';
 import 'package:labs/features/shop/domain/repositories/drink_repository.dart';
 
 import '../../domain/entities/cart_item_entity.dart';
+import '../../domain/entities/demo_order.dart';
 import '../../domain/repositories/cart_repository.dart';
 import '../datasources/cart_local_data_source.dart';
 import '../models/cart_item_model.dart';
@@ -12,6 +13,8 @@ import '../models/cart_item_model.dart';
 class CartRepositoryImpl implements CartRepository {
   final CartLocalDataSource localDataSource;
   final DrinkRepository drinkRepository;
+  static const _currency = 'RUB';
+  static const _legacyDemoRate = 50;
 
   CartRepositoryImpl({
     required this.localDataSource,
@@ -24,17 +27,21 @@ class CartRepositoryImpl implements CartRepository {
     final models = await localDataSource.getCartItems();
 
     // Проверяем, есть ли уже элемент с этим drink.name
-    final index = models.indexWhere((m) => m.drinkName == drink.name);
+    final defaultItem = CartItemModel(drinkName: drink.name, quantity: 1);
+    final index = models.indexWhere(
+      (m) => m.drinkName == drink.name && m.options == defaultItem.options,
+    );
     if (index >= 0) {
       // Если есть, увеличиваем quantity
       final existing = models[index];
       models[index] = CartItemModel(
         drinkName: existing.drinkName,
         quantity: existing.quantity + 1,
+        options: existing.options,
       );
     } else {
       // Иначе добавляем новый
-      models.add(CartItemModel(drinkName: drink.name, quantity: 1));
+      models.add(defaultItem);
     }
 
     // Сохраняем обновлённый список обратно
@@ -42,19 +49,105 @@ class CartRepositoryImpl implements CartRepository {
   }
 
   @override
+  Future<void> saveCartItems(List<CartItemEntity> items) {
+    return localDataSource.saveCartItems([
+      for (final item in items) _model(item),
+    ]);
+  }
+
+  @override
   Future<List<CartItemEntity>> getCartItems() async {
     final models = await localDataSource.getCartItems();
-    final List<CartItemEntity> entities = [];
+    if (models.isEmpty) return [];
 
-    // Для каждого CartItemModel нужно получить полный DrinkEntity по имени
-    for (final model in models) {
-      final drinkEntity = await drinkRepository.getDrinkByName(model.drinkName);
-      entities.add(CartItemEntity(
-        drink: drinkEntity,
-        quantity: model.quantity,
-      ));
-    }
-    return entities;
+    final drinks = {
+      for (final drink in await drinkRepository.getAllDrinks())
+        drink.name: drink,
+    };
+    return [
+      for (final model in models)
+        if (drinks[model.drinkName] case final drink? when model.quantity > 0)
+          CartItemEntity(
+            drink: drink,
+            quantity: model.quantity,
+            options: model.options,
+          ),
+    ];
+  }
+
+  CartItemModel _model(CartItemEntity item) => CartItemModel(
+    drinkName: item.drink.name,
+    quantity: item.quantity,
+    options: item.options,
+  );
+
+  @override
+  Future<void> saveOrder(DemoOrder order) => localDataSource.saveOrder({
+    'placedAt': order.placedAt.toUtc().toIso8601String(),
+    'currency': _currency,
+    if (order.paymentMethod case final method?) 'paymentMethod': method.name,
+    'items': [
+      for (final item in order.items)
+        {
+          ..._model(item).toJson(),
+          'displayName': item.drink.displayName,
+          'unitPrice': item.unitPrice,
+        },
+    ],
+  });
+
+  @override
+  Future<List<DemoOrder>> getOrders() async => [
+    for (final order in localDataSource.getOrders())
+      DemoOrder(
+        placedAt: DateTime.parse(order['placedAt'] as String).toLocal(),
+        paymentMethod: DemoPaymentMethod.values
+            .where((method) => method.name == order['paymentMethod'])
+            .firstOrNull,
+        items: List.unmodifiable(
+          (order['items'] as List).cast<Map<String, dynamic>>().map(
+            (item) => _readOrderItem(item, order['currency'] == _currency),
+          ),
+        ),
+      ),
+  ];
+
+  CartItemEntity _readOrderItem(Map<String, dynamic> json, bool inRubles) {
+    final model = CartItemModel.fromJson(json);
+    final storedPrice = (json['unitPrice'] as num).toDouble();
+    final price = inRubles
+        ? storedPrice
+        : (storedPrice * _legacyDemoRate).roundToDouble();
+    return CartItemEntity(
+      drink: DrinkEntity(
+        name: model.drinkName,
+        displayName: json['displayName'] as String,
+        price: price,
+        description: '',
+        imagePath: '',
+      ),
+      quantity: model.quantity,
+      options: model.options,
+      recordedUnitPrice: price,
+    );
+  }
+
+  @override
+  Future<List<CartItemEntity>> getReorderItems(DemoOrder order) async {
+    final drinks = {
+      for (final drink in await drinkRepository.getAllDrinks())
+        drink.name: drink,
+    };
+    return [
+      for (final item in order.items)
+        CartItemEntity(
+          drink:
+              drinks[item.drink.name] ??
+              (throw StateError('Напиток недоступен')),
+          quantity: item.quantity,
+          options: item.options,
+        ),
+    ];
   }
 
   @override
@@ -72,7 +165,7 @@ class CartRepositoryImpl implements CartRepository {
     final items = await getCartItems();
     double sum = 0.0;
     for (final item in items) {
-      sum += item.drink.price * item.quantity;
+      sum += item.lineTotal;
     }
     return sum;
   }

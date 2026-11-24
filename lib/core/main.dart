@@ -1,154 +1,119 @@
-
-
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:labs/core/di/injection_container.dart' as di;
-import 'package:labs/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:labs/features/auth/presentation/pages/login_page.dart';
-import 'package:labs/features/auth/presentation/pages/register_page.dart';
-import 'package:labs/features/cart/presentation/bloc/cart_cubit.dart';
-import 'package:labs/features/shop/presentation/bloc/shop_cubit.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../features/auth/presentation/bloc/auth_cubit.dart';
+import '../features/auth/presentation/pages/login_page.dart';
+import '../features/auth/presentation/pages/profile_page.dart';
+import '../features/auth/presentation/pages/register_page.dart';
+import '../features/cart/presentation/bloc/cart_cubit.dart';
+import '../features/cart/presentation/bloc/cart_state.dart';
 import '../features/cart/presentation/pages/cart_page.dart';
-import '../features/shop/presentation/pages/drink_detail_page.dart' hide DrinkDetailPage;
+import '../features/cart/presentation/pages/orders_page.dart';
+import '../features/shop/presentation/bloc/shop_cubit.dart';
 import '../features/shop/presentation/pages/shop_page.dart';
 import '../firebase_options.dart';
+import 'di/injection_container.dart' as di;
+import 'shop_theme.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  final prefs = await SharedPreferences.getInstance();
-  final loggedIn = prefs.getBool('is_logged_in') ?? false;
-  final username = prefs.getString('username') ?? '';
-
   await di.init();
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<CartCubit>(create: (_) => di.sl<CartCubit>()),
-        BlocProvider<ShopCubit>(create: (_) => di.sl<ShopCubit>()..loadDrinks()),
+        BlocProvider<CartCubit>(create: (_) => di.sl<CartCubit>()..load()),
+        BlocProvider<ShopCubit>(
+          create: (_) => di.sl<ShopCubit>()..loadDrinks(),
+        ),
         BlocProvider<AuthCubit>(
           create: (_) => di.sl<AuthCubit>()..checkLoggedIn(),
         ),
-        // если есть
-        // BlocProvider<AuthCubit>(create: (_) => di.sl<AuthCubit>()), // и т. д.
       ],
       child: MaterialApp(
-        title: 'Ваше приложение',
+        title: 'Biba & Boba',
+        theme: shopTheme,
+        locale: const Locale('ru'),
+        supportedLocales: const [Locale('ru')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         debugShowCheckedModeBanner: false,
-        initialRoute: '/', // Вот тут корневой экран
         routes: {
-          '/': (_) => const RootPage(),
+          '/': (_) => const MainPage(),
           '/login': (_) => const LoginPage(),
-          '/cart': (_) => const CartPage(),
-          '/shop': (_) => const ShopPage(),
-          '/register': (_) => const RegisterPage(), // или другой экран регистрации
-          // '/login': (_) => const LoginPage(),
-          // … остальные маршруты
+          '/register': (_) => const RegisterPage(),
+          '/shop': (_) => const MainPage(),
+          '/cart': (_) => const MainPage(initialIndex: 1),
+          '/orders': (_) => const OrdersPage(),
+          '/profile': (_) => const ProfilePage(),
         },
       ),
     );
   }
 }
 
-class RootPage extends StatelessWidget {
-  const RootPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<AuthCubit, AuthState>(
-      builder: (context, state) {
-        if (state is AuthAuthenticated) {
-          return const MainPage();
-        } else if (state is AuthInitial || state is AuthError) {
-          return const LoginPage();
-        } else {
-          // loading
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-      },
-    );
-  }
-}
-
 class MainPage extends StatefulWidget {
-  const MainPage({super.key});
+  const MainPage({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
 
   @override
   State<MainPage> createState() => _MainPageState();
 }
 
 class _MainPageState extends State<MainPage> {
-  int _currentIndex = 0;
+  late int _currentIndex = widget.initialIndex;
 
-  static const Color _bgColor = Color(0xFFF2D8B0);
-  static const Color _darkerBgColor = Color(0xFFEACDA2);
-
-  List<Widget> get _pages => [const ShopPage(), const CartPage()];
+  void _select(int index) => setState(() => _currentIndex = index);
 
   @override
   Widget build(BuildContext context) {
+    final count = context.select((CartCubit cubit) {
+      final state = cubit.state;
+      return state is CartLoaded ? state.itemCount : 0;
+    });
+
     return Scaffold(
-      backgroundColor: _bgColor,
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                color: Colors.indigo,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 24,
-                  horizontal: 16,
-                ),
-                child: const Text(
-                  'Меню',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          const ShopPage(),
+          CartPage(onBrowse: () => _select(0)),
+        ],
       ),
-      body: IndexedStack(index: _currentIndex, children: _pages),
-      bottomNavigationBar: CupertinoTabBar(
-        backgroundColor: _darkerBgColor,
-        activeColor: const Color(0xFF5D3A00),
-        inactiveColor: const Color(0xFF9E7F62),
-        iconSize: 30,
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.cart_fill),
-            label: 'Shop',
+      bottomNavigationBar: NavigationBar(
+        height: 68,
+        backgroundColor: shopSurface,
+        indicatorColor: shopDivider,
+        selectedIndex: _currentIndex,
+        onDestinationSelected: _select,
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.local_drink_outlined),
+            selectedIcon: Icon(Icons.local_drink),
+            label: 'Меню',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.cart_fill_badge_plus),
-            label: 'Cart',
+          NavigationDestination(
+            icon: Semantics(
+              label: 'Напитков: $count',
+              child: Badge(
+                isLabelVisible: count > 0,
+                label: ExcludeSemantics(
+                  child: Text(count > 99 ? '99+' : '$count'),
+                ),
+                child: const Icon(Icons.shopping_bag_outlined),
+              ),
+            ),
+            label: 'Корзина',
+            tooltip: 'Корзина. Напитков: $count',
           ),
         ],
       ),

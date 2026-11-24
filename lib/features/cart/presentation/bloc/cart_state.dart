@@ -14,11 +14,18 @@ class CartLoading extends CartState {}
 class CartLoaded extends CartState {
   final List<CartItemEntity> items;
   final double totalPrice;
+  final String? saveError;
 
-  const CartLoaded({required this.items, required this.totalPrice});
+  const CartLoaded({
+    required this.items,
+    required this.totalPrice,
+    this.saveError,
+  });
+
+  int get itemCount => items.fold(0, (count, item) => count + item.quantity);
 
   @override
-  List<Object?> get props => [items, totalPrice];
+  List<Object?> get props => [items, totalPrice, saveError];
 }
 
 class CartError extends CartState {

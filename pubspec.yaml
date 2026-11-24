@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   math_expressions: ^2.2.0
   webview_flutter: ^4.2.2
   http: ^0.13.6

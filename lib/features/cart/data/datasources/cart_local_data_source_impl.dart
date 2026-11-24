@@ -9,27 +9,47 @@ class CartLocalDataSourceImpl implements CartLocalDataSource {
 
   final SharedPreferences sharedPreferences;
 
-  CartLocalDataSourceImpl({
-    required this.sharedPreferences,
-  });
+  CartLocalDataSourceImpl({required this.sharedPreferences});
 
   @override
   Future<List<CartItemModel>> getCartItems() async {
-    final jsonString = sharedPreferences.getString(_cartKey);
-    if (jsonString == null) {
-      return [];
-    }
-    final List<dynamic> decoded = json.decode(jsonString);
-    return decoded
+    final items = _read()['items'] as List;
+    return items
         .map((e) => CartItemModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
   @override
-  Future<void> saveCartItems(List<CartItemModel> items) async {
-    final List<Map<String, dynamic>> jsonList =
-    items.map((e) => e.toJson()).toList();
-    final jsonString = json.encode(jsonList);
-    await sharedPreferences.setString(_cartKey, jsonString);
+  Future<void> saveCartItems(List<CartItemModel> items) => _write({
+    ..._read(),
+    'items': items.map((item) => item.toJson()).toList(),
+  });
+
+  @override
+  List<Map<String, dynamic>> getOrders() =>
+      (_read()['orders'] as List).cast<Map<String, dynamic>>();
+
+  @override
+  Future<void> saveOrder(Map<String, dynamic> order) => _write({
+    'items': [],
+    'orders': [order, ...getOrders()],
+  });
+
+  Map<String, dynamic> _read() {
+    final raw = sharedPreferences.getString(_cartKey);
+    final data = raw == null ? [] : jsonDecode(raw);
+    if (data is List) return {'items': data, 'orders': []};
+    return data as Map<String, dynamic>;
+  }
+
+  Future<void> _write(Map<String, dynamic> data) async {
+    try {
+      if (await sharedPreferences.setString(_cartKey, jsonEncode(data))) return;
+    } catch (_) {
+      await sharedPreferences.reload();
+      rethrow;
+    }
+    await sharedPreferences.reload();
+    throw StateError('Не удалось сохранить корзину');
   }
 }

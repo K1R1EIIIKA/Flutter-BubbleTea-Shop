@@ -1,9 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:labs/features/auth/presentation/bloc/auth_cubit.dart';
+
+import '../../../../core/shop_icon_button.dart';
+import '../../../../core/shop_theme.dart';
+import '../bloc/auth_cubit.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -11,177 +15,164 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  String _username = '';
-  String _password = '';
-  bool _isObscure = true;
+  final _username = TextEditingController();
+  final _password = TextEditingController();
+  bool _obscure = true;
+  String? _error;
+
+  @override
+  void dispose() {
+    _username.dispose();
+    _password.dispose();
+    super.dispose();
+  }
 
   void _login() {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      context.read<AuthCubit>().login(_username.trim(), _password.trim());
+    final auth = context.read<AuthCubit>();
+    if (auth.state is! AuthLoading && _formKey.currentState!.validate()) {
+      auth.login(_username.text.trim(), _password.text.trim());
     }
-  }
-
-  void _loginWithGoogle() {
-    context.read<AuthCubit>().loginWithGoogle();
-  }
-
-  void _goToRegister() {
-    Navigator.of(context).pushNamed('/register'); // или свой Route
-  }
-
-  void _forgotPassword() {
-    // Навигация на экран восстановления пароля
-    Navigator.of(context).pushNamed('/recover_password');
   }
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = const Color(0xFFFCE5CC);
-    final brown = const Color(0xFF7A4F23);
+    final supportsGoogle =
+        kIsWeb ||
+        const {
+          TargetPlatform.android,
+          TargetPlatform.iOS,
+          TargetPlatform.macOS,
+        }.contains(defaultTargetPlatform);
 
     return Scaffold(
-      backgroundColor: bgColor,
+      appBar: AppBar(
+        leading: const ShopBackButton(),
+        title: const Text('Вход'),
+      ),
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
-          if (state is AuthAuthenticated) {
-            Navigator.of(context).pushReplacementNamed('/');
-          } else if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
+          if (state is AuthAuthenticated &&
+              ModalRoute.of(context)?.isCurrent == true) {
+            Navigator.of(context).popUntil(
+              (route) => route.settings.name == '/profile' || route.isFirst,
             );
+          } else if (state is AuthError) {
+            setState(() => _error = state.message);
+          } else if (state is AuthLoading) {
+            setState(() => _error = null);
           }
         },
         builder: (context, state) {
-          return Center(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset('assets/img/biba_and_boba.png', height: 170),
-                      const SizedBox(height: 32),
-                      const Text(
-                        'Biba & Boba',
-                        style: TextStyle(
-                          color: Color(0xFF7A4F23),
-                          fontWeight: FontWeight.w900,
-                          fontSize: 32,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFFDCC3A4),
-                          hintText: 'Username',
-                          hintStyle: const TextStyle(color: Color(0xFFBCA47C)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                        ),
-                        validator: (v) => (v == null || v.isEmpty) ? 'Введите логин' : null,
-                        onSaved: (v) => _username = v ?? '',
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        obscureText: _isObscure,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFFDCC3A4),
-                          hintText: 'Password',
-                          hintStyle: const TextStyle(color: Color(0xFFBCA47C)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                          suffixIcon: IconButton(
-                            icon: Icon(_isObscure ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => _isObscure = !_isObscure),
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.isEmpty) ? 'Введите пароль' : null,
-                        onSaved: (v) => _password = v ?? '',
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: state is AuthLoading ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: brown,
-                            minimumSize: const Size.fromHeight(52),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: state is AuthLoading
-                              ? const SizedBox(
-                              height: 22, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text(
-                            'Sign In',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
+          final busy = state is AuthLoading;
+          return SafeArea(
+            top: false,
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: AutofillGroup(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Expanded(
-                            child: Divider(thickness: 1, color: Color(0xFFDDC7AA)),
+                          Image.asset(
+                            'assets/img/biba_and_boba.png',
+                            height: 120,
+                            excludeFromSemantics: true,
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Or continue with',
-                            style: TextStyle(color: Color(0xFFBCA47C)),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _username,
+                            enabled: !busy,
+                            autofillHints: const [AutofillHints.username],
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Логин',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                ? 'Введите логин'
+                                : null,
                           ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Divider(thickness: 1, color: Color(0xFFDDC7AA)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      GestureDetector(
-                        onTap: state is AuthLoading ? null : _loginWithGoogle,
-                        child: CircleAvatar(
-                          radius: 26,
-                          backgroundColor: Colors.white,
-                          child: Image.asset('assets/img/google.png', height: 36),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Not a member? ',
-                            style: TextStyle(color: Color(0xFFBCA47C)),
-                          ),
-                          GestureDetector(
-                            onTap: _goToRegister,
-                            child: const Text(
-                              'Register now',
-                              style: TextStyle(
-                                color: Color(0xFF7A4F23),
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _password,
+                            enabled: !busy,
+                            obscureText: _obscure,
+                            autofillHints: const [AutofillHints.password],
+                            onFieldSubmitted: (_) => _login(),
+                            decoration: InputDecoration(
+                              labelText: 'Пароль',
+                              border: const OutlineInputBorder(),
+                              suffixIcon: ShopIconButton(
+                                label: _obscure
+                                    ? 'Показать пароль'
+                                    : 'Скрыть пароль',
+                                icon: Icon(
+                                  _obscure
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                ),
+                                onPressed: () =>
+                                    setState(() => _obscure = !_obscure),
                               ),
                             ),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                ? 'Введите пароль'
+                                : null,
+                          ),
+                          if (_error case final error?)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  error,
+                                  style: const TextStyle(color: shopInk),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: busy ? null : _login,
+                            child: Text(busy ? 'Входим…' : 'Войти'),
+                          ),
+                          if (supportsGoogle)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: OutlinedButton.icon(
+                                onPressed: busy
+                                    ? null
+                                    : context.read<AuthCubit>().loginWithGoogle,
+                                icon: Image.asset(
+                                  'assets/img/google.png',
+                                  height: 20,
+                                  width: 20,
+                                  excludeFromSemantics: true,
+                                ),
+                                label: const Text(
+                                  'Войти через Google',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          TextButton(
+                            onPressed: busy
+                                ? null
+                                : () =>
+                                      Navigator.pushNamed(context, '/register'),
+                            child: const Text(
+                              'Создать аккаунт',
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                         ],
-                      )
-                    ],
+                      ),
+                    ),
                   ),
                 ),
               ),

@@ -7,4 +7,8 @@ abstract class CartLocalDataSource {
 
   /// Сохраняет список CartItemModel в локальном хранилище
   Future<void> saveCartItems(List<CartItemModel> items);
+
+  List<Map<String, dynamic>> getOrders();
+
+  Future<void> saveOrder(Map<String, dynamic> order);
 }

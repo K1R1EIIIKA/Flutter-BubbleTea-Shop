@@ -1,9 +1,8 @@
-import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:labs/features/auth/domain/usecases/login_usecase.dart';
 import 'package:labs/features/auth/domain/usecases/sign_in_with_google_usecase.dart';
 import '../../domain/entities/user_entity.dart';
-
 
 part 'auth_state.dart';
 
@@ -21,7 +20,7 @@ class AuthCubit extends Cubit<AuthState> {
     required this.logoutUseCase,
     required this.isLoggedInUseCase,
     required this.getCurrentUserUseCase,
-    required this.signInWithGoogleUseCase
+    required this.signInWithGoogleUseCase,
   }) : super(AuthInitial());
 
   Future<void> login(String username, String password) async {
@@ -30,7 +29,7 @@ class AuthCubit extends Cubit<AuthState> {
       final user = await loginUseCase.call(username, password);
       emit(AuthAuthenticated(user));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(e.toString().replaceFirst('Exception: ', '')));
     }
   }
 
@@ -40,7 +39,7 @@ class AuthCubit extends Cubit<AuthState> {
       final user = await registerUseCase.call(username, email, password);
       emit(AuthAuthenticated(user));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(e.toString().replaceFirst('Exception: ', '')));
     }
   }
 
@@ -50,16 +49,15 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> checkLoggedIn() async {
-    final isLoggedIn = await isLoggedInUseCase.call();
-    if (isLoggedIn) {
-      final user = await getCurrentUserUseCase.call();
-      if (user != null) {
+    try {
+      final user = await isLoggedInUseCase.call()
+          ? await getCurrentUserUseCase.call()
+          : null;
+      if (user != null && !isClosed && state is AuthInitial) {
         emit(AuthAuthenticated(user));
-      } else {
-        emit(AuthInitial());
       }
-    } else {
-      emit(AuthInitial());
+    } catch (_) {
+      // The shop can still open in guest mode if the local session is invalid.
     }
   }
 
@@ -68,8 +66,12 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final user = await signInWithGoogleUseCase.call();
       emit(AuthAuthenticated(user));
-    } catch (e) {
-      emit(AuthError(e.toString()));
+    } catch (_) {
+      emit(
+        const AuthError(
+          'Не удалось войти через Google. Повторите попытку или войдите по логину.',
+        ),
+      );
     }
   }
 }

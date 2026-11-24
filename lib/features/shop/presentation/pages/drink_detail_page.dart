@@ -1,40 +1,336 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/drink_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../cart/presentation/bloc/cart_cubit.dart';
 
-class DrinkDetailPage extends StatelessWidget {
-  const DrinkDetailPage({Key? key}) : super(key: key);
+import '../../../../core/shop_icon_button.dart';
+import '../../../../core/shop_theme.dart';
+import '../../../cart/domain/entities/cart_item_entity.dart';
+import '../../../cart/presentation/bloc/cart_cubit.dart';
+import '../../../cart/presentation/bloc/cart_state.dart';
+import '../../domain/entities/drink_entity.dart';
+import '../../domain/entities/drink_options.dart';
+import '../bloc/shop_cubit.dart';
+
+class DrinkDetailPage extends StatefulWidget {
+  const DrinkDetailPage({super.key, required this.drink}) : original = null;
+  DrinkDetailPage.edit({super.key, required CartItemEntity item})
+    : drink = item.drink,
+      original = item;
+
+  final DrinkEntity drink;
+  final CartItemEntity? original;
+
+  @override
+  State<DrinkDetailPage> createState() => _DrinkDetailPageState();
+}
+
+class _DrinkDetailPageState extends State<DrinkDetailPage> {
+  bool _saving = false;
+  String? _status;
+  late DrinkEntity _drink = widget.drink;
+  late DrinkSize _size = widget.original?.options.size ?? DrinkSize.standard;
+  late DrinkIce _ice = widget.original?.options.ice ?? DrinkIce.regular;
+  late DrinkSweetness _sweetness =
+      widget.original?.options.sweetness ?? DrinkSweetness.regular;
+  late DrinkTopping _topping =
+      widget.original?.options.topping ?? DrinkTopping.none;
+
+  DrinkOptions get _options => DrinkOptions(
+    size: _size,
+    ice: _ice,
+    sweetness: _sweetness,
+    topping: _topping,
+  );
+
+  void _select(VoidCallback change) => setState(() {
+    change();
+    _status = null;
+  });
+
+  Future<void> _chooseDrink(List<DrinkEntity> drinks) async {
+    final selected = await showDialog<DrinkEntity>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Выберите напиток'),
+        children: [
+          for (final drink in drinks)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, drink),
+              child: Text(
+                '${drink.displayName} · ${formatShopPrice(drink.price)}',
+              ),
+            ),
+        ],
+      ),
+    );
+    if (selected != null && mounted) _select(() => _drink = selected);
+  }
+
+  Future<void> _saveDrink() async {
+    setState(() {
+      _saving = true;
+      _status = null;
+    });
+    final cart = context.read<CartCubit>();
+    final original = widget.original;
+    final added = original == null
+        ? await cart.addDrink(_drink, options: _options)
+        : await cart.updateDrink(original, _drink, _options);
+    if (!mounted) return;
+    if (added && original != null) {
+      Navigator.pop(context);
+      return;
+    }
+    setState(() {
+      _saving = false;
+      _status = added
+          ? 'Добавлено в корзину'
+          : 'Не удалось сохранить напиток. Повторите попытку.';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final DrinkEntity drink = ModalRoute.of(context)!.settings.arguments as DrinkEntity;
-
+    final drink = _drink;
+    final editing = widget.original != null;
+    final catalog = editing ? context.watch<ShopCubit>().state : null;
+    final cartState = context.watch<CartCubit>().state;
+    final theme = Theme.of(context);
+    final price = formatShopPrice(drink.price + _options.extra);
+    final imageHeight = (MediaQuery.sizeOf(context).height * 0.32)
+        .clamp(148.0, 272.0)
+        .toDouble();
     return Scaffold(
-      appBar: AppBar(title: Text(drink.name)),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Image.asset(drink.imagePath, height: 200),
-            const SizedBox(height: 16),
-            Text(drink.description, style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 16),
-            Text('Цена: ${drink.price.toStringAsFixed(2)} ₽', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const Spacer(),
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  context.read<CartCubit>().addDrink(drink);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Добавлено в корзину')));
-                },
-                child: const Text('Добавить в корзину'),
+      appBar: AppBar(
+        leading: const ShopBackButton(),
+        title: editing ? const Text('Изменить напиток') : null,
+        scrolledUnderElevation: 0,
+      ),
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+              children: [
+                Image.asset(
+                  drink.imagePath,
+                  height: imageHeight,
+                  fit: BoxFit.contain,
+                  excludeFromSemantics: true,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  drink.displayName,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    height: 1.12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  drink.displayDescription,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: shopMuted,
+                    height: 1.45,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                if (catalog is ShopLoaded && catalog.drinks.length > 1) ...[
+                  OutlinedButton(
+                    onPressed: _saving
+                        ? null
+                        : () => _chooseDrink(catalog.drinks),
+                    child: const Text('Выбрать другой напиток'),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                _OptionGroup(
+                  title: 'Объём',
+                  segmented: true,
+                  choices: [
+                    for (final size in DrinkSize.values)
+                      _chip(
+                        _priceLabel(size.label, size.extra),
+                        _size == size,
+                        () => _size = size,
+                        segment: true,
+                      ),
+                  ],
+                ),
+                _OptionGroup(
+                  title: 'Лёд',
+                  choices: [
+                    for (final ice in DrinkIce.values)
+                      _chip(ice.label, _ice == ice, () => _ice = ice),
+                  ],
+                ),
+                _OptionGroup(
+                  title: 'Сладость',
+                  choices: [
+                    for (final sweetness in DrinkSweetness.values)
+                      _chip(
+                        sweetness.label,
+                        _sweetness == sweetness,
+                        () => _sweetness = sweetness,
+                      ),
+                  ],
+                ),
+                _OptionGroup(
+                  title: 'Добавка',
+                  choices: [
+                    for (final topping in DrinkTopping.values)
+                      _chip(
+                        _priceLabel(topping.label, topping.extra),
+                        _topping == topping,
+                        () => _topping = topping,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: shopBackground,
+          border: Border(top: BorderSide(color: shopDivider)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Align(
+            alignment: Alignment.center,
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 10, 24, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Semantics(
+                      label: 'Цена: $price',
+                      excludeSemantics: true,
+                      liveRegion: true,
+                      child: Text(
+                        price,
+                        textAlign: TextAlign.end,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (_status case final status?)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(status, textAlign: TextAlign.center),
+                        ),
+                      ),
+                    if (cartState is CartError)
+                      OutlinedButton(
+                        onPressed: context.read<CartCubit>().load,
+                        child: const Text(
+                          'Повторить загрузку корзины',
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    else
+                      FilledButton(
+                        onPressed: !_saving && cartState is CartLoaded
+                            ? _saveDrink
+                            : null,
+                        child: Text(
+                          _saving
+                              ? 'Сохраняем…'
+                              : editing
+                              ? 'Сохранить изменения'
+                              : 'В корзину',
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  String _priceLabel(String label, double extra) =>
+      extra == 0 ? label : '$label +${formatShopPrice(extra)}';
+
+  Widget _chip(
+    String label,
+    bool selected,
+    VoidCallback change, {
+    bool segment = false,
+  }) => ChoiceChip(
+    label: segment
+        ? Align(
+            alignment: Alignment.center,
+            child: Text(label, textAlign: TextAlign.center),
+          )
+        : Text(label),
+    selected: selected,
+    showCheckmark: !segment,
+    backgroundColor: segment ? shopSurface : shopBackground,
+    selectedColor: segment ? Colors.white : const Color(0xFFF1E9E1),
+    side: BorderSide(
+      color: segment && !selected ? Colors.transparent : shopDivider,
+    ),
+    onSelected: _saving ? null : (_) => _select(change),
+  );
+}
+
+class _OptionGroup extends StatelessWidget {
+  const _OptionGroup({
+    required this.title,
+    required this.choices,
+    this.segmented = false,
+  });
+
+  final String title;
+  final List<Widget> choices;
+  final bool segmented;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+        ),
+        const SizedBox(height: 4),
+        if (segmented)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: shopSurface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  for (final choice in choices) Expanded(child: choice),
+                ],
+              ),
+            ),
+          )
+        else
+          Wrap(spacing: 8, runSpacing: 4, children: choices),
+      ],
+    ),
+  );
 }

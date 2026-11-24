@@ -1,213 +1,368 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:labs/features/shop/presentation/bloc/shop_cubit.dart';
-import 'package:labs/features/cart/presentation/bloc/cart_cubit.dart';
-import 'package:labs/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:labs/features/shop/domain/entities/drink_entity.dart';
 
-class ShopPage extends StatelessWidget {
-  const ShopPage({Key? key}) : super(key: key);
+import '../../../../core/shop_icon_button.dart';
+import '../../../../core/shop_theme.dart';
+import '../../../auth/presentation/bloc/auth_cubit.dart';
+import '../../domain/entities/drink_entity.dart';
+import '../bloc/shop_cubit.dart';
+import 'drink_detail_page.dart';
+
+class ShopPage extends StatefulWidget {
+  const ShopPage({super.key});
+
+  @override
+  State<ShopPage> createState() => _ShopPageState();
+}
+
+class _ShopPageState extends State<ShopPage> {
+  DrinkCategory? _category;
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = const Color(0xFFFCE5CC);
-    final brown = const Color(0xFF7A4F23);
-
-    final authState = context.watch<AuthCubit>().state;
-    String greeting = '';
-    if (authState is AuthAuthenticated) {
-      greeting = 'Hi, ${authState.user.username}!';
-    }
+    final auth = context.watch<AuthCubit>().state;
+    final greeting = auth is AuthAuthenticated
+        ? 'Привет, ${auth.user.username}!'
+        : 'Добро пожаловать!';
+    final state = context.watch<ShopCubit>().state;
 
     return Scaffold(
-      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        title: Text(
-          greeting,
-          style: const TextStyle(
-            color: Color(0xFF7A4F23),
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Biba & Boba'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_outlined, color: Color(0xFF7A4F23)),
-            tooltip: 'Выйти из аккаунта',
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Выйти из аккаунта?'),
-                  content: const Text('Вы уверены, что хотите выйти?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Отмена'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('Выйти'),
-                    ),
-                  ],
-                ),
-              );
-              if (confirmed == true) {
-                context.read<AuthCubit>().logout();
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
-            },
-          )
+          ShopIconButton(
+            label: 'Профиль',
+            icon: const Icon(Icons.person_outline),
+            onPressed: () => Navigator.pushNamed(context, '/profile'),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 32),
-        child: BlocBuilder<ShopCubit, ShopState>(
-          builder: (context, state) {
-            if (state is ShopLoading) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is ShopLoaded) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ...state.drinks.map((drink) => Padding(
-                    padding: const EdgeInsets.only(bottom: 26),
-                    child: Row(
-                      children: [
-                        Image.asset(drink.imagePath, height: 68),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            drink.name,
-                            style: const TextStyle(
-                              color: Color(0xFF7A4F23),
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '\$${drink.price.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: Color(0xFF7A4F23),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => DrinkDetailPage(drink: drink),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.shopping_bag_outlined,
-                              size: 30, color: Color(0xFF7A4F23)),
-                          tooltip: 'Подробнее',
-                        ),
-                      ],
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: switch (state) {
+              ShopLoaded() when state.drinks.isNotEmpty => _menu(
+                context,
+                state.drinks,
+                greeting,
+              ),
+              ShopLoaded() => const Center(
+                child: Text('В меню пока нет напитков.'),
+              ),
+              ShopError() => Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Не удалось загрузить меню.',
+                        textAlign: TextAlign.center,
+                      ),
+                      TextButton(
+                        onPressed: context.read<ShopCubit>().loadDrinks,
+                        child: const Text('Повторить'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              _ => const Center(
+                child: CircularProgressIndicator(
+                  semanticsLabel: 'Загрузка меню',
+                ),
+              ),
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _menu(
+    BuildContext context,
+    List<DrinkEntity> drinks,
+    String greeting,
+  ) {
+    final popular = drinks.where((drink) => drink.popular).toList();
+    final categories = DrinkCategory.values.where(
+      (category) => drinks.any((drink) => drink.category == category),
+    );
+    final visible = drinks
+        .where((drink) => _category == null || drink.category == _category)
+        .toList();
+    return ListView(
+      key: const PageStorageKey('menu'),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            greeting,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+        ),
+        if (popular.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _PopularDrinks(drinks: popular),
+        ],
+        const SizedBox(height: 22),
+        Semantics(
+          header: true,
+          child: Text(
+            'Каталог',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            _filter('Все', null),
+            for (final category in categories)
+              _filter(category.label, category),
+          ],
+        ),
+        const SizedBox(height: 8),
+        for (var index = 0; index < visible.length; index += 2)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _CatalogCard(
+                    key: ValueKey('menu-${visible[index].name}'),
+                    drink: visible[index],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: index + 1 < visible.length
+                      ? _CatalogCard(
+                          key: ValueKey('menu-${visible[index + 1].name}'),
+                          drink: visible[index + 1],
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _filter(String label, DrinkCategory? category) => ChoiceChip(
+    label: Text(label),
+    selected: _category == category,
+    selectedColor: shopSurface,
+    onSelected: (_) => setState(() => _category = category),
+  );
+}
+
+void _openDrink(BuildContext context, DrinkEntity drink) =>
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => DrinkDetailPage(drink: drink)),
+    );
+
+class _CatalogCard extends StatelessWidget {
+  const _CatalogCard({super.key, required this.drink});
+  final DrinkEntity drink;
+
+  @override
+  Widget build(BuildContext context) {
+    final price = formatShopPrice(drink.price);
+    return Semantics(
+      button: true,
+      label: 'Подробнее: ${drink.displayName}, $price',
+      onTap: () => _openDrink(context, drink),
+      excludeSemantics: true,
+      child: Material(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: shopDivider),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _openDrink(context, drink),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ColoredBox(
+                color: shopSurface,
+                child: AspectRatio(
+                  aspectRatio: 1.25,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Image.asset(
+                      drink.imagePath,
+                      fit: BoxFit.contain,
+                      excludeFromSemantics: true,
                     ),
-                  )),
-                ],
-              );
-            } else if (state is ShopError) {
-              return Center(child: Text('Ошибка: ${state.message}'));
-            }
-            return const Center(child: Text('Нет товаров'));
-          },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      drink.displayName,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(price, style: const TextStyle(color: shopMuted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class DrinkDetailPage extends StatelessWidget {
-  final DrinkEntity drink;
-  const DrinkDetailPage({Key? key, required this.drink}) : super(key: key);
+class _PopularDrinks extends StatefulWidget {
+  const _PopularDrinks({required this.drinks});
+  final List<DrinkEntity> drinks;
+
+  @override
+  State<_PopularDrinks> createState() => _PopularDrinksState();
+}
+
+class _PopularDrinksState extends State<_PopularDrinks> {
+  final _controller = PageController();
+  int _page = 0;
+  static const _colors = [
+    Color(0xFFF5E0DE),
+    Color(0xFFF5E8D0),
+    Color(0xFFDFEAF0),
+  ];
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _goTo(int page) => _controller.animateToPage(
+    page,
+    duration: const Duration(milliseconds: 280),
+    curve: Curves.easeOutCubic,
+  );
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = const Color(0xFFFCE5CC);
-    final brown = const Color(0xFF7A4F23);
-
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF7A4F23)),
-          onPressed: () => Navigator.of(context).pop(),
+    final textSize = MediaQuery.textScalerOf(context).scale(16);
+    return Column(
+      children: [
+        SizedBox(
+          height: 200 + (textSize - 16).clamp(0, 28).toDouble() * 6,
+          child: PageView.builder(
+            controller: _controller,
+            itemCount: widget.drinks.length,
+            onPageChanged: (page) => setState(() => _page = page),
+            itemBuilder: (context, index) {
+              final drink = widget.drinks[index];
+              final price = formatShopPrice(drink.price);
+              return Semantics(
+                button: true,
+                label: 'Популярное: ${drink.displayName}, $price',
+                onTap: () => _openDrink(context, drink),
+                excludeSemantics: true,
+                child: Material(
+                  color: _colors[index % _colors.length],
+                  borderRadius: BorderRadius.circular(22),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _openDrink(context, drink),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Популярное',
+                                  style: TextStyle(color: shopMuted),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 6),
+                                Flexible(
+                                  child: Text(
+                                    drink.displayName,
+                                    maxLines: 4,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(fontWeight: FontWeight.w800),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  price,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Image.asset(
+                              drink.imagePath,
+                              fit: BoxFit.contain,
+                              excludeFromSemantics: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
-      ),
-      body: Column(
-        children: [
-          Image.asset(drink.imagePath, height: 160),
-          const SizedBox(height: 18),
-          Text(
-            drink.name,
-            style: const TextStyle(
-              color: Color(0xFF7A4F23),
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '\$${drink.price.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Color(0xFF7A4F23),
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              drink.description,
-              style: const TextStyle(
-                color: Color(0xFFBCA47C),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+        if (widget.drinks.length > 1)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ShopIconButton(
+                label: 'Предыдущий популярный напиток',
+                icon: const Icon(Icons.chevron_left),
+                onPressed: () => _goTo((_page - 1) % widget.drinks.length),
               ),
-              textAlign: TextAlign.center,
-            ),
+              Semantics(
+                label: 'Слайд ${_page + 1} из ${widget.drinks.length}',
+                excludeSemantics: true,
+                child: Text('${_page + 1} / ${widget.drinks.length}'),
+              ),
+              ShopIconButton(
+                label: 'Следующий популярный напиток',
+                icon: const Icon(Icons.chevron_right),
+                onPressed: () => _goTo((_page + 1) % widget.drinks.length),
+              ),
+            ],
           ),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.all(22.0),
-            child: ElevatedButton(
-              onPressed: () {
-                context.read<CartCubit>().addDrink(drink);
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${drink.name} добавлен в корзину')),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: brown,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                minimumSize: const Size.fromHeight(52),
-              ),
-              child: const Text(
-                'Add to cart',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          )
-        ],
-      ),
+      ],
     );
   }
 }

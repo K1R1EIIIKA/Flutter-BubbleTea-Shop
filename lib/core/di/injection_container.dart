@@ -74,10 +74,7 @@ Future<void> init() async {
   );
 
   /// === Cubit (Presentation) для корзины ===
-  sl.registerFactory<CartCubit>(
-    () => CartCubit(
-    ),
-  );
+  sl.registerFactory<CartCubit>(() => CartCubit(repository: sl()));
 
   sl.registerLazySingleton<AuthLocalDataSource>(
         () => AuthLocalDataSourceImpl(sl()),
