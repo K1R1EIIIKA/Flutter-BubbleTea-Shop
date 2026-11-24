@@ -8,7 +8,9 @@ import '../../../cart/presentation/bloc/cart_cubit.dart';
 import '../../../cart/presentation/bloc/cart_state.dart';
 import '../../domain/entities/drink_entity.dart';
 import '../../domain/entities/drink_options.dart';
+import '../bloc/drink_notes_cubit.dart';
 import '../bloc/shop_cubit.dart';
+import 'drink_photo_section.dart';
 
 class DrinkDetailPage extends StatefulWidget {
   const DrinkDetailPage({super.key, required this.drink}) : original = null;
@@ -25,6 +27,7 @@ class DrinkDetailPage extends StatefulWidget {
 
 class _DrinkDetailPageState extends State<DrinkDetailPage> {
   bool _saving = false;
+  bool _updatingNote = false;
   String? _status;
   late DrinkEntity _drink = widget.drink;
   late DrinkSize _size = widget.original?.options.size ?? DrinkSize.standard;
@@ -47,19 +50,85 @@ class _DrinkDetailPageState extends State<DrinkDetailPage> {
   });
 
   Future<void> _chooseDrink(List<DrinkEntity> drinks) async {
-    final selected = await showDialog<DrinkEntity>(
+    final selected = await showModalBottomSheet<DrinkEntity>(
       context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Выберите напиток'),
-        children: [
-          for (final drink in drinks)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, drink),
-              child: Text(
-                '${drink.displayName} · ${formatShopPrice(drink.price)}',
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: shopBackground,
+      constraints: const BoxConstraints(maxWidth: 480),
+      builder: (context) => SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.72,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    'Выберите напиток',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ),
-            ),
-        ],
+              Flexible(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  shrinkWrap: true,
+                  itemCount: drinks.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 4),
+                  itemBuilder: (context, index) {
+                    final drink = drinks[index];
+                    final current = drink.name == _drink.name;
+                    return ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      selected: current,
+                      selectedTileColor: shopSurface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                      minVerticalPadding: 8,
+                      leading: Container(
+                        width: 46,
+                        height: 46,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: shopBackground,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: shopDivider),
+                        ),
+                        child: Image.asset(
+                          drink.imagePath,
+                          fit: BoxFit.contain,
+                          excludeFromSemantics: true,
+                        ),
+                      ),
+                      title: Text(
+                        drink.displayName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(formatShopPrice(drink.price)),
+                      trailing: current
+                          ? const Icon(Icons.check_circle_outline)
+                          : null,
+                      onTap: () => Navigator.pop(context, drink),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
     if (selected != null && mounted) _select(() => _drink = selected);
@@ -88,10 +157,32 @@ class _DrinkDetailPageState extends State<DrinkDetailPage> {
     });
   }
 
+  Future<void> _updateNote(
+    Future<void> Function() change,
+    String errorMessage,
+  ) async {
+    setState(() => _updatingNote = true);
+    try {
+      await change();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      }
+    } finally {
+      if (mounted) setState(() => _updatingNote = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final drink = _drink;
     final editing = widget.original != null;
+    final notes = editing ? null : context.watch<DrinkNotesCubit?>();
+    final note = notes?.state.ready == true
+        ? notes!.state.forDrink(drink.name)
+        : null;
     final catalog = editing ? context.watch<ShopCubit>().state : null;
     final cartState = context.watch<CartCubit>().state;
     final theme = Theme.of(context);
@@ -104,6 +195,21 @@ class _DrinkDetailPageState extends State<DrinkDetailPage> {
         leading: const ShopBackButton(),
         title: editing ? const Text('Изменить напиток') : null,
         scrolledUnderElevation: 0,
+        actions: [
+          if (note != null)
+            ShopIconButton(
+              label: note.favorite ? 'Убрать из избранного' : 'В избранное',
+              icon: Icon(
+                note.favorite ? Icons.favorite : Icons.favorite_border,
+              ),
+              onPressed: _updatingNote
+                  ? null
+                  : () => _updateNote(
+                      () => notes!.setFavorite(drink.name, !note.favorite),
+                      'Не удалось сохранить избранное.',
+                    ),
+            ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -190,6 +296,28 @@ class _DrinkDetailPageState extends State<DrinkDetailPage> {
                       ),
                   ],
                 ),
+                if (note != null)
+                  DrinkPhotoSection(
+                    name: note.photoName,
+                    readPhoto: notes!.readPhoto,
+                    onPick: _updatingNote
+                        ? null
+                        : () => _updateNote(
+                            () => notes.pickPhoto(drink.name),
+                            'Не удалось сохранить фото. Выберите изображение до 10 МБ.',
+                          ),
+                    onRemove: _updatingNote
+                        ? null
+                        : () => _updateNote(
+                            () => notes.removePhoto(drink.name),
+                            'Не удалось удалить фото.',
+                          ),
+                  ),
+                if (notes?.state.failed == true)
+                  TextButton(
+                    onPressed: notes!.load,
+                    child: const Text('Повторить загрузку избранного и фото'),
+                  ),
               ],
             ),
           ),

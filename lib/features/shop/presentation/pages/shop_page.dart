@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -5,8 +6,12 @@ import '../../../../core/shop_icon_button.dart';
 import '../../../../core/shop_theme.dart';
 import '../../../auth/presentation/bloc/auth_cubit.dart';
 import '../../domain/entities/drink_entity.dart';
+import '../bloc/drink_notes_cubit.dart';
 import '../bloc/shop_cubit.dart';
 import 'drink_detail_page.dart';
+
+const _popularViewportFraction = 0.9;
+const _popularCardGap = 10.0;
 
 class ShopPage extends StatefulWidget {
   const ShopPage({super.key});
@@ -17,6 +22,16 @@ class ShopPage extends StatefulWidget {
 
 class _ShopPageState extends State<ShopPage> {
   DrinkCategory? _category;
+  bool _showFavorites = false;
+
+  Future<void> _refresh() async {
+    final refreshed = await context.read<ShopCubit>().refreshDrinks();
+    if (!refreshed && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось обновить меню.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,8 +65,17 @@ class _ShopPageState extends State<ShopPage> {
                 state.drinks,
                 greeting,
               ),
-              ShopLoaded() => const Center(
-                child: Text('В меню пока нет напитков.'),
+              ShopLoaded() => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('В меню пока нет напитков.'),
+                    TextButton(
+                      onPressed: _refresh,
+                      child: const Text('Обновить'),
+                    ),
+                  ],
+                ),
               ),
               ShopError() => Center(
                 child: SingleChildScrollView(
@@ -63,7 +87,7 @@ class _ShopPageState extends State<ShopPage> {
                         textAlign: TextAlign.center,
                       ),
                       TextButton(
-                        onPressed: context.read<ShopCubit>().loadDrinks,
+                        onPressed: _refresh,
                         child: const Text('Повторить'),
                       ),
                     ],
@@ -91,87 +115,144 @@ class _ShopPageState extends State<ShopPage> {
     final categories = DrinkCategory.values.where(
       (category) => drinks.any((drink) => drink.category == category),
     );
+    final notes = context.watch<DrinkNotesCubit?>()?.state;
     final visible = drinks
-        .where((drink) => _category == null || drink.category == _category)
+        .where(
+          (drink) => _showFavorites
+              ? notes?.forDrink(drink.name).favorite == true
+              : _category == null || drink.category == _category,
+        )
         .toList();
-    return ListView(
-      key: const PageStorageKey('menu'),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
-        Semantics(
-          header: true,
-          child: Text(
-            greeting,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ),
-        if (popular.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          _PopularDrinks(drinks: popular),
-        ],
-        const SizedBox(height: 22),
-        Semantics(
-          header: true,
-          child: Text(
-            'Каталог',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            _filter('Все', null),
-            for (final category in categories)
-              _filter(category.label, category),
-          ],
-        ),
-        const SizedBox(height: 8),
-        for (var index = 0; index < visible.length; index += 2)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _CatalogCard(
-                    key: ValueKey('menu-${visible[index].name}'),
-                    drink: visible[index],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: index + 1 < visible.length
-                      ? _CatalogCard(
-                          key: ValueKey('menu-${visible[index + 1].name}'),
-                          drink: visible[index + 1],
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        key: const PageStorageKey('menu'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              greeting,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
-      ],
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) => Align(
+              alignment: Alignment.center,
+              child: SizedBox(
+                width:
+                    constraints.maxWidth * _popularViewportFraction -
+                    _popularCardGap,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFDCEBE2),
+                    foregroundColor: const Color(0xFF244535),
+                    textStyle: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    alignment: Alignment.centerLeft,
+                    minimumSize: const Size(0, 56),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                  ),
+                  onPressed: () => Navigator.pushNamed(context, '/news'),
+                  child: const Text('Новости'),
+                ),
+              ),
+            ),
+          ),
+          if (popular.isNotEmpty && !_showFavorites) ...[
+            const SizedBox(height: 14),
+            _PopularDrinks(key: ValueKey(popular.length), drinks: popular),
+          ],
+          const SizedBox(height: 22),
+          Semantics(
+            header: true,
+            child: Text(
+              'Каталог',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              _filter('Все', null),
+              for (final category in categories)
+                _filter(category.label, category),
+              if (notes?.ready == true)
+                ChoiceChip(
+                  label: const Text('Избранное'),
+                  selected: _showFavorites,
+                  selectedColor: shopSurface,
+                  onSelected: (_) => setState(() => _showFavorites = true),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (_showFavorites && visible.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('Сохраняйте любимые напитки в их карточках.'),
+            ),
+          for (var index = 0; index < visible.length; index += 2)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _CatalogCard(
+                      key: ValueKey('menu-${visible[index].name}'),
+                      drink: visible[index],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: index + 1 < visible.length
+                        ? _CatalogCard(
+                            key: ValueKey('menu-${visible[index + 1].name}'),
+                            drink: visible[index + 1],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
   Widget _filter(String label, DrinkCategory? category) => ChoiceChip(
     label: Text(label),
-    selected: _category == category,
+    selected: !_showFavorites && _category == category,
     selectedColor: shopSurface,
-    onSelected: (_) => setState(() => _category = category),
+    onSelected: (_) => setState(() {
+      _showFavorites = false;
+      _category = category;
+    }),
   );
 }
 
 void _openDrink(BuildContext context, DrinkEntity drink) =>
     Navigator.push<void>(
       context,
-      MaterialPageRoute(builder: (_) => DrinkDetailPage(drink: drink)),
+      MaterialPageRoute(
+        settings: const RouteSettings(name: '/drink'),
+        builder: (_) => DrinkDetailPage(drink: drink),
+      ),
     );
 
 class _CatalogCard extends StatelessWidget {
@@ -234,7 +315,7 @@ class _CatalogCard extends StatelessWidget {
 }
 
 class _PopularDrinks extends StatefulWidget {
-  const _PopularDrinks({required this.drinks});
+  const _PopularDrinks({super.key, required this.drinks});
   final List<DrinkEntity> drinks;
 
   @override
@@ -242,13 +323,19 @@ class _PopularDrinks extends StatefulWidget {
 }
 
 class _PopularDrinksState extends State<_PopularDrinks> {
-  final _controller = PageController();
-  int _page = 0;
+  static const _cycleCount = 9;
+  static const _middleCycle = _cycleCount ~/ 2;
   static const _colors = [
     Color(0xFFF5E0DE),
     Color(0xFFF5E8D0),
     Color(0xFFDFEAF0),
   ];
+  late final _controller = PageController(
+    viewportFraction: _popularViewportFraction,
+    initialPage: _loops ? _middleCycle * widget.drinks.length : 0,
+  );
+
+  bool get _loops => widget.drinks.length > 1;
 
   @override
   void dispose() {
@@ -256,33 +343,59 @@ class _PopularDrinksState extends State<_PopularDrinks> {
     super.dispose();
   }
 
-  void _goTo(int page) => _controller.animateToPage(
-    page,
-    duration: const Duration(milliseconds: 280),
-    curve: Curves.easeOutCubic,
-  );
+  bool _recenterAfterScroll(ScrollEndNotification notification) {
+    if (!_loops || notification.depth != 0) return false;
+    final count = widget.drinks.length;
+    final page = _controller.page?.round();
+    if (page == null) return false;
+    if (page < count * 2 || page >= count * (_cycleCount - 2)) {
+      // Move to the same card in the middle, with identical neighbors.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted ||
+            !_controller.hasClients ||
+            _controller.position.isScrollingNotifier.value ||
+            _controller.page?.round() != page) {
+          return;
+        }
+        _controller.jumpToPage(_middleCycle * count + page % count);
+      });
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
     final textSize = MediaQuery.textScalerOf(context).scale(16);
-    return Column(
-      children: [
-        SizedBox(
-          height: 200 + (textSize - 16).clamp(0, 28).toDouble() * 6,
-          child: PageView.builder(
-            controller: _controller,
-            itemCount: widget.drinks.length,
-            onPageChanged: (page) => setState(() => _page = page),
-            itemBuilder: (context, index) {
-              final drink = widget.drinks[index];
-              final price = formatShopPrice(drink.price);
-              return Semantics(
-                button: true,
-                label: 'Популярное: ${drink.displayName}, $price',
-                onTap: () => _openDrink(context, drink),
-                excludeSemantics: true,
+    return SizedBox(
+      height: 200 + (textSize - 16).clamp(0, 28).toDouble() * 6,
+      child: NotificationListener<ScrollEndNotification>(
+        onNotification: _recenterAfterScroll,
+        child: PageView.builder(
+          key: PageStorageKey('popular-${widget.drinks.length}'),
+          controller: _controller,
+          allowImplicitScrolling: true,
+          scrollBehavior: ScrollConfiguration.of(context).copyWith(
+            dragDevices: {
+              ...ScrollConfiguration.of(context).dragDevices,
+              PointerDeviceKind.mouse,
+            },
+          ),
+          itemCount: _loops ? widget.drinks.length * _cycleCount : 1,
+          itemBuilder: (context, index) {
+            final drinkIndex = index % widget.drinks.length;
+            final drink = widget.drinks[drinkIndex];
+            final price = formatShopPrice(drink.price);
+            return Semantics(
+              button: true,
+              label: 'Популярное: ${drink.displayName}, $price',
+              onTap: () => _openDrink(context, drink),
+              excludeSemantics: true,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: _popularCardGap / 2,
+                ),
                 child: Material(
-                  color: _colors[index % _colors.length],
+                  color: _colors[drinkIndex % _colors.length],
                   borderRadius: BorderRadius.circular(22),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
@@ -337,32 +450,11 @@ class _PopularDrinksState extends State<_PopularDrinks> {
                     ),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
-        if (widget.drinks.length > 1)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ShopIconButton(
-                label: 'Предыдущий популярный напиток',
-                icon: const Icon(Icons.chevron_left),
-                onPressed: () => _goTo((_page - 1) % widget.drinks.length),
-              ),
-              Semantics(
-                label: 'Слайд ${_page + 1} из ${widget.drinks.length}',
-                excludeSemantics: true,
-                child: Text('${_page + 1} / ${widget.drinks.length}'),
-              ),
-              ShopIconButton(
-                label: 'Следующий популярный напиток',
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () => _goTo((_page + 1) % widget.drinks.length),
-              ),
-            ],
-          ),
-      ],
+      ),
     );
   }
 }

@@ -15,16 +15,18 @@ import 'package:labs/features/cart/domain/usecases/get_cart_items_usecase.dart';
 import 'package:labs/features/cart/domain/usecases/get_total_price_usecase.dart';
 import 'package:labs/features/cart/domain/usecases/remove_from_cart_usecase.dart';
 import 'package:labs/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:labs/features/shop/data/datasources/android_catalog.dart';
 import 'package:labs/features/shop/data/datasources/drink_local_data_source.dart';
 import 'package:labs/features/shop/data/repositories/drink_repository_impl.dart';
 import 'package:labs/features/shop/domain/repositories/drink_repository.dart';
 import 'package:labs/features/shop/domain/usecases/get_all_drinks_usecase.dart';
+import 'package:labs/features/shop/presentation/bloc/drink_notes_cubit.dart';
 import 'package:labs/features/shop/presentation/bloc/shop_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final sl = GetIt.instance;
 
-Future<void> init() async {
+Future<void> init({bool useAndroidCatalog = false}) async {
   /// === External / Библиотеки ===
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
@@ -32,9 +34,16 @@ Future<void> init() async {
   // Для примера: если вы в других фичах используете rootBundle, то ничего регистрировать не нужно
 
   /// === DataSource для напитков ===
+  final androidCatalog = useAndroidCatalog ? AndroidCatalog() : null;
   sl.registerLazySingleton<DrinkLocalDataSource>(
-    () => DrinkLocalDataSourceImpl(assetPath: 'assets/data/drinks.json'),
+    () => DrinkLocalDataSourceImpl(
+      assetPath: 'assets/data/drinks.json',
+      readCachedCatalog: androidCatalog?.readCatalog,
+    ),
   );
+  if (androidCatalog != null) {
+    sl.registerFactory<DrinkNotesCubit>(() => DrinkNotesCubit(androidCatalog));
+  }
 
   /// === Репозиторий напитков ===
   sl.registerLazySingleton<DrinkRepository>(
@@ -70,7 +79,11 @@ Future<void> init() async {
         () => GetAllDrinksUseCase(sl()),
   );
   sl.registerFactory<ShopCubit>(
-        () => ShopCubit(getAllDrinksUseCase: sl()),
+    () => ShopCubit(
+      getAllDrinksUseCase: sl(),
+      refreshCatalog: androidCatalog?.refreshCatalog,
+      catalogChanges: androidCatalog?.catalogChanges,
+    ),
   );
 
   /// === Cubit (Presentation) для корзины ===

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:labs/core/di/injection_container.dart' as di;
 import 'package:labs/core/main.dart';
@@ -88,14 +89,51 @@ void main() {
     await tap(find.byTooltip('Назад'));
     await tap(find.byTooltip('Назад'));
     expect(find.text('Добро пожаловать!'), findsOneWidget);
-    final nextSlide = find.byTooltip('Следующий популярный напиток');
-    await tester.scrollUntilVisible(
-      nextSlide.hitTestable(),
-      110,
-      scrollable: find.byType(Scrollable).first,
+    final news = find.widgetWithText(FilledButton, 'Новости');
+    final carousel = find.byType(PageView);
+    final viewport = tester.getRect(carousel);
+    final visibleCards =
+        find
+            .descendant(of: carousel, matching: find.byType(Material))
+            .evaluate()
+            .map((card) => tester.getRect(find.byWidget(card.widget)))
+            .where(viewport.overlaps)
+            .toList()
+          ..sort((left, right) => left.left.compareTo(right.left));
+    expect(visibleCards, hasLength(3));
+    expect(visibleCards.first.left, lessThan(viewport.left));
+    expect(visibleCards.last.right, greaterThan(viewport.right));
+    expect(visibleCards[1].center.dx, closeTo(viewport.center.dx, 0.1));
+    expect(
+      tester.getBottomLeft(news).dy,
+      lessThan(tester.getTopLeft(carousel).dy),
     );
-    await tap(nextSlide);
-    expect(find.bySemanticsLabel('Слайд 2 из 3'), findsOneWidget);
+    expect(tester.getSize(news).width, closeTo(visibleCards[1].width, 0.1));
+    expect(tester.getCenter(news).dx, closeTo(viewport.center.dx, 0.1));
+    expect(find.byIcon(Icons.chevron_left), findsNothing);
+    expect(find.byIcon(Icons.chevron_right), findsNothing);
+    const newsChannel = MethodChannel('bubble_tea/news');
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(newsChannel, (_) async => false);
+    addTearDown(() => messenger.setMockMethodCallHandler(newsChannel, null));
+    await tap(news);
+    expect(find.text('Что нового в Biba & Boba'), findsOneWidget);
+    await tap(find.byTooltip('Назад'));
+
+    final controller = tester.widget<PageView>(carousel).controller!;
+    expect(controller.viewportFraction, lessThan(1));
+    expect(controller.page!.round() % 3, 0);
+    for (var swipe = 1; swipe <= 15; swipe++) {
+      await tester.drag(carousel, const Offset(220, 0));
+      await tester.pumpAndSettle();
+      expect(controller.page!.round() % 3, -swipe % 3);
+    }
+    for (var swipe = 1; swipe <= 15; swipe++) {
+      await tester.drag(carousel, const Offset(-220, 0));
+      await tester.pumpAndSettle();
+      expect(controller.page!.round() % 3, swipe % 3);
+    }
+    expect(find.textContaining(RegExp(r'^\d+\s*/\s*\d+$')), findsNothing);
     final tea = find.text('Чайные');
     await tester.scrollUntilVisible(
       tea.hitTestable(),
@@ -140,15 +178,37 @@ void main() {
       customized,
     ]);
     expect(cart.last.unitPrice, 475);
-    final edit = find.byTooltip('Изменить напиток: Манго');
+    final edit = find.byTooltip('Изменить напиток: Манго-танго');
     await tester.scrollUntilVisible(edit.hitTestable(), 100);
     await tap(edit);
     final changeDrink = find.text('Выбрать другой напиток');
     await tester.scrollUntilVisible(changeDrink.hitTestable(), 100);
     await tap(changeDrink);
-    final caramel = find.textContaining('Карамель ·');
-    await tester.ensureVisible(caramel);
-    await tester.pumpAndSettle();
+    final drinkChoices = find.byType(BottomSheet);
+    final current = find.descendant(
+      of: drinkChoices,
+      matching: find.text('Манго-танго'),
+    );
+    expect(
+      tester
+          .widget<ListTile>(
+            find.ancestor(of: current, matching: find.byType(ListTile)),
+          )
+          .selected,
+      isTrue,
+    );
+    final caramel = find.descendant(
+      of: drinkChoices,
+      matching: find.text('Карамельное облако'),
+    );
+    await tester.scrollUntilVisible(
+      caramel.hitTestable(),
+      90,
+      scrollable: find.descendant(
+        of: drinkChoices,
+        matching: find.byType(Scrollable),
+      ),
+    );
     await tap(caramel);
     await tap(find.text('Сохранить изменения'));
     expect((await repository.getCartItems()).first.drink.name, 'Caramel');
@@ -212,12 +272,12 @@ void main() {
       expect(find.bySemanticsLabel('Профиль'), findsWidgets);
 
       const names = {
-        'Strawberry & Cactus': 'Клубника и кактус',
-        'Mango': 'Манго',
-        'Blue Matcha': 'Голубая матча',
-        'Caramel': 'Карамель',
-        'In Bottle': 'Напиток в бутылке',
-        'Strawberry': 'Клубника',
+        'Strawberry & Cactus': 'Клубничный кактус',
+        'Mango': 'Манго-танго',
+        'Blue Matcha': 'Матча индиго',
+        'Caramel': 'Карамельное облако',
+        'In Bottle': 'Боба с собой',
+        'Strawberry': 'Клубничный поп',
       };
       for (final entry in names.entries) {
         final card = find.byKey(ValueKey('menu-${entry.key}'));
@@ -254,31 +314,31 @@ void main() {
       final repository = di.sl<CartRepository>();
       expect(await repository.getCartItems(), hasLength(6));
       expect(
-        find.bySemanticsLabel('Увеличить количество: Клубника и кактус'),
+        find.bySemanticsLabel('Увеличить количество: Клубничный кактус'),
         findsWidgets,
       );
       expect(
-        find.byTooltip('Увеличить количество: Клубника и кактус'),
+        find.byTooltip('Увеличить количество: Клубничный кактус'),
         findsOneWidget,
       );
       await tester.scrollUntilVisible(
-        find.byTooltip('Увеличить количество: Клубника и кактус').hitTestable(),
+        find.byTooltip('Увеличить количество: Клубничный кактус').hitTestable(),
         120,
       );
       await tester.tap(
-        find.byTooltip('Увеличить количество: Клубника и кактус'),
+        find.byTooltip('Увеличить количество: Клубничный кактус'),
       );
       await tester.pumpAndSettle();
       expect((await repository.getCartItems()).first.quantity, 2);
       await tester.tap(
-        find.byTooltip('Уменьшить количество: Клубника и кактус'),
+        find.byTooltip('Уменьшить количество: Клубничный кактус'),
       );
       await tester.pumpAndSettle();
       expect((await repository.getCartItems()).first.quantity, 1);
 
       final checkout = find.widgetWithText(FilledButton, 'Оформить демозаказ');
       expect(checkout.hitTestable(), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Клубника'), 240);
+      await tester.scrollUntilVisible(find.text('Клубничный поп'), 240);
       expect(checkout.hitTestable(), findsOneWidget);
       await tester.tap(checkout);
       await tester.pumpAndSettle();

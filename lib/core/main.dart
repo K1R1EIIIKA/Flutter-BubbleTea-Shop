@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,15 +12,21 @@ import '../features/cart/presentation/bloc/cart_cubit.dart';
 import '../features/cart/presentation/bloc/cart_state.dart';
 import '../features/cart/presentation/pages/cart_page.dart';
 import '../features/cart/presentation/pages/orders_page.dart';
+import '../features/shop/presentation/bloc/drink_notes_cubit.dart';
 import '../features/shop/presentation/bloc/shop_cubit.dart';
+import '../features/shop/presentation/pages/news_page.dart';
 import '../features/shop/presentation/pages/shop_page.dart';
 import '../firebase_options.dart';
 import 'di/injection_container.dart' as di;
+import 'screen_log_observer.dart';
 import 'shop_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await di.init();
+  await di.init(
+    useAndroidCatalog:
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
+  );
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
@@ -38,6 +45,10 @@ class MyApp extends StatelessWidget {
         BlocProvider<AuthCubit>(
           create: (_) => di.sl<AuthCubit>()..checkLoggedIn(),
         ),
+        if (di.sl.isRegistered<DrinkNotesCubit>())
+          BlocProvider<DrinkNotesCubit>(
+            create: (_) => di.sl<DrinkNotesCubit>()..load(),
+          ),
       ],
       child: MaterialApp(
         title: 'Biba & Boba',
@@ -46,6 +57,7 @@ class MyApp extends StatelessWidget {
         supportedLocales: const [Locale('ru')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         debugShowCheckedModeBanner: false,
+        navigatorObservers: [ScreenLogObserver()],
         routes: {
           '/': (_) => const MainPage(),
           '/login': (_) => const LoginPage(),
@@ -54,6 +66,7 @@ class MyApp extends StatelessWidget {
           '/cart': (_) => const MainPage(initialIndex: 1),
           '/orders': (_) => const OrdersPage(),
           '/profile': (_) => const ProfilePage(),
+          '/news': (_) => const NewsPage(),
         },
       ),
     );
