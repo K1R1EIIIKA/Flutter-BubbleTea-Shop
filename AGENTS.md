@@ -22,10 +22,10 @@ flutter test
 
 ## Где менять код
 
-- `lib/core/main.dart` содержит маршруты, выбор стартового экрана и навигацию между каталогом и корзиной. Регистрация зависимостей находится в `lib/core/di/injection_container.dart`.
-- `lib/features/auth`, `lib/features/shop` и `lib/features/cart` содержат слои `data`, `domain` и `presentation`. Сохраняйте границы слоёв и используйте существующие Cubit и репозитории.
+- `lib/core/main.dart` создаёт хранилища и Cubit, настраивает маршруты и навигацию между каталогом и корзиной.
+- `lib/features/auth`, `lib/features/shop` и `lib/features/cart` группируют код по функциям. В папках `screens/` находятся экраны, Cubit управляют состоянием, а классы `AuthStore`, `DrinkCatalog` и `CartStore` работают с данными.
 - Каталог загружается из `assets/data/drinks.json`. Если меняете пути к изображениям, сверяйте их с файлами под `assets/img/` и объявлениями в `pubspec.yaml`.
-- `ShopPage` открывает `DrinkDetailPage` из `lib/features/shop/presentation/pages/drink_detail_page.dart`.
+- `ShopPage` открывает `DrinkDetailPage` из `lib/features/shop/screens/drink_detail_page.dart`.
 
 ## Лабораторные работы
 

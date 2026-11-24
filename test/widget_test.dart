@@ -4,27 +4,62 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:labs/core/di/injection_container.dart' as di;
 import 'package:labs/core/main.dart';
-import 'package:labs/features/cart/domain/entities/demo_order.dart';
-import 'package:labs/features/cart/domain/repositories/cart_repository.dart';
-import 'package:labs/features/shop/data/datasources/drink_local_data_source.dart';
-import 'package:labs/features/shop/data/models/drink_model.dart';
-import 'package:labs/features/shop/domain/entities/drink_options.dart';
+import 'package:labs/features/auth/auth_store.dart';
+import 'package:labs/features/cart/cart_store.dart';
+import 'package:labs/features/shop/drink_catalog.dart';
+import 'package:labs/features/cart/demo_order.dart';
+import 'package:labs/features/shop/drink_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class _CatalogFixture implements DrinkLocalDataSource {
-  final _drinks =
-      (jsonDecode(File('assets/data/drinks.json').readAsStringSync()) as List)
-          .cast<Map<String, dynamic>>()
-          .map(DrinkModel.fromJson)
-          .toList();
-
-  @override
-  Future<List<DrinkModel>> loadDrinksFromJson() async => _drinks;
+Future<MyApp> _testApp() async {
+  final preferences = await SharedPreferences.getInstance();
+  final json = File('assets/data/drinks.json').readAsStringSync();
+  final catalog = DrinkCatalog(readCachedCatalog: () async => json);
+  return MyApp(
+    catalog: catalog,
+    cartStore: CartStore(preferences, catalog),
+    authStore: AuthStore(preferences),
+  );
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test(
+    'Existing local accounts can restore a session and sign in again',
+    () async {
+      const savedAccount = {
+        'username': 'Гость',
+        'email': 'test@example.com',
+        'password': 'demo-password',
+      };
+      SharedPreferences.setMockInitialValues({
+        'AUTH_USER_JSON': jsonEncode(savedAccount),
+        'USERS_LIST_JSON': jsonEncode([savedAccount]),
+      });
+      final preferences = await SharedPreferences.getInstance();
+      final store = AuthStore(preferences);
+
+      expect((await store.currentUser())?.username, 'Гость');
+      await store.logout();
+      expect(await store.currentUser(), isNull);
+      await expectLater(store.login('Гость', 'wrong'), throwsException);
+      expect(
+        (await store.login('Гость', 'demo-password')).email,
+        'test@example.com',
+      );
+      await expectLater(
+        store.register('Гость', 'other@example.com', 'pass'),
+        throwsException,
+      );
+      await store.register('Новый', 'new@example.com', 'pass');
+      expect((await AuthStore(preferences).currentUser())?.username, 'Новый');
+      await store.logout();
+      expect((await store.login('Новый', 'pass')).email, 'new@example.com');
+    },
+  );
+
   testWidgets('Amounts from legacy demo orders are read in rubles once', (
     tester,
   ) async {
@@ -46,13 +81,12 @@ void main() {
         ],
       }),
     });
-    await di.init();
-    addTearDown(di.sl.reset);
-    final repository = di.sl<CartRepository>();
-    final legacy = (await repository.getOrders()).single;
+    final app = await _testApp();
+    final cartStore = app.cartStore;
+    final legacy = (await cartStore.getOrders()).single;
     expect(legacy.total, 700);
-    await repository.saveOrder(legacy);
-    expect((await repository.getOrders()).map((order) => order.total), [
+    await cartStore.saveOrder(legacy);
+    expect((await cartStore.getOrders()).map((order) => order.total), [
       700,
       700,
     ]);
@@ -64,10 +98,7 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'CART_ITEMS_JSON': '[{"drinkName":"Mango","quantity":1}]',
     });
-    await di.init();
-    await di.sl.unregister<DrinkLocalDataSource>();
-    di.sl.registerSingleton<DrinkLocalDataSource>(_CatalogFixture());
-    addTearDown(di.sl.reset);
+    final app = await _testApp();
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(360, 600);
     tester.platformDispatcher.textScaleFactorTestValue = 2;
@@ -80,7 +111,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(app);
     await tester.pumpAndSettle();
     expect(find.text('Мои заказы'), findsNothing);
     await tap(find.byTooltip('Профиль'));
@@ -165,14 +196,14 @@ void main() {
     await tap(find.byTooltip('Назад'));
     await tap(find.byType(NavigationDestination).last);
 
-    final repository = di.sl<CartRepository>();
+    final cartStore = app.cartStore;
     const customized = DrinkOptions(
       size: DrinkSize.large,
       ice: DrinkIce.none,
       sweetness: DrinkSweetness.half,
       topping: DrinkTopping.tapioca,
     );
-    final cart = await repository.getCartItems();
+    final cart = await cartStore.getCartItems();
     expect(cart.map((item) => item.options), [
       const DrinkOptions(),
       customized,
@@ -211,7 +242,7 @@ void main() {
     );
     await tap(caramel);
     await tap(find.text('Сохранить изменения'));
-    expect((await repository.getCartItems()).first.drink.name, 'Caramel');
+    expect((await cartStore.getCartItems()).first.drink.name, 'Caramel');
     await tap(find.text('Оформить демозаказ'));
     for (final method in DemoPaymentMethod.values) {
       await tester.scrollUntilVisible(
@@ -225,22 +256,22 @@ void main() {
     final confirm = find.text('Подтвердить демозаказ');
     await tester.scrollUntilVisible(confirm.hitTestable(), 140);
     await tap(confirm);
-    expect(await repository.getCartItems(), isEmpty);
+    expect(await cartStore.getCartItems(), isEmpty);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(app);
     await tester.pumpAndSettle();
     await tap(find.byTooltip('Профиль'));
     await tap(find.text('Мои заказы'));
-    final order = (await repository.getOrders()).single;
+    final order = (await cartStore.getOrders()).single;
     expect(order.total, 825);
     expect(order.paymentMethod, DemoPaymentMethod.sbp);
     await tap(find.textContaining('Демозаказ ·'));
     final repeat = find.text('Повторить заказ');
     await tester.scrollUntilVisible(repeat.hitTestable(), 140);
     await tap(repeat);
-    final restored = await repository.getCartItems();
+    final restored = await cartStore.getCartItems();
     expect(restored.map((item) => item.options), [
       const DrinkOptions(),
       customized,
@@ -254,10 +285,7 @@ void main() {
     'Guest order works on a compact screen and cart survives restart',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
-      await di.init();
-      await di.sl.unregister<DrinkLocalDataSource>();
-      di.sl.registerSingleton<DrinkLocalDataSource>(_CatalogFixture());
-      addTearDown(di.sl.reset);
+      final app = await _testApp();
 
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(360, 600);
@@ -266,7 +294,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(app);
       await tester.pumpAndSettle();
       expect(find.byTooltip('Профиль'), findsOneWidget);
       expect(find.bySemanticsLabel('Профиль'), findsWidgets);
@@ -306,13 +334,13 @@ void main() {
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(app);
       await tester.pumpAndSettle();
       await tester.tap(find.byType(NavigationDestination).last);
       await tester.pumpAndSettle();
 
-      final repository = di.sl<CartRepository>();
-      expect(await repository.getCartItems(), hasLength(6));
+      final cartStore = app.cartStore;
+      expect(await cartStore.getCartItems(), hasLength(6));
       expect(
         find.bySemanticsLabel('Увеличить количество: Клубничный кактус'),
         findsWidgets,
@@ -329,12 +357,12 @@ void main() {
         find.byTooltip('Увеличить количество: Клубничный кактус'),
       );
       await tester.pumpAndSettle();
-      expect((await repository.getCartItems()).first.quantity, 2);
+      expect((await cartStore.getCartItems()).first.quantity, 2);
       await tester.tap(
         find.byTooltip('Уменьшить количество: Клубничный кактус'),
       );
       await tester.pumpAndSettle();
-      expect((await repository.getCartItems()).first.quantity, 1);
+      expect((await cartStore.getCartItems()).first.quantity, 1);
 
       final checkout = find.widgetWithText(FilledButton, 'Оформить демозаказ');
       expect(checkout.hitTestable(), findsOneWidget);
@@ -348,7 +376,7 @@ void main() {
       );
       await tester.tap(find.byTooltip('Назад'));
       await tester.pumpAndSettle();
-      expect(await repository.getCartItems(), hasLength(6));
+      expect(await cartStore.getCartItems(), hasLength(6));
 
       await tester.tap(checkout);
       await tester.pumpAndSettle();
@@ -361,7 +389,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(find.text('Демозаказ оформлен'), -240);
       expect(find.text('Демозаказ оформлен'), findsOneWidget);
-      expect(await repository.getCartItems(), isEmpty);
+      expect(await cartStore.getCartItems(), isEmpty);
       expect(tester.takeException(), isNull);
     },
   );

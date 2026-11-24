@@ -3,51 +3,79 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../features/auth/presentation/bloc/auth_cubit.dart';
-import '../features/auth/presentation/pages/login_page.dart';
-import '../features/auth/presentation/pages/profile_page.dart';
-import '../features/auth/presentation/pages/register_page.dart';
-import '../features/cart/presentation/bloc/cart_cubit.dart';
-import '../features/cart/presentation/bloc/cart_state.dart';
-import '../features/cart/presentation/pages/cart_page.dart';
-import '../features/cart/presentation/pages/orders_page.dart';
-import '../features/shop/presentation/bloc/drink_notes_cubit.dart';
-import '../features/shop/presentation/bloc/shop_cubit.dart';
-import '../features/shop/presentation/pages/news_page.dart';
-import '../features/shop/presentation/pages/shop_page.dart';
+import '../features/auth/auth_cubit.dart';
+import '../features/auth/auth_store.dart';
+import '../features/auth/screens/login_page.dart';
+import '../features/auth/screens/profile_page.dart';
+import '../features/auth/screens/register_page.dart';
+import '../features/cart/cart_cubit.dart';
+import '../features/cart/cart_store.dart';
+import '../features/cart/screens/cart_page.dart';
+import '../features/cart/screens/orders_page.dart';
+import '../features/shop/android_catalog.dart';
+import '../features/shop/drink_catalog.dart';
+import '../features/shop/drink_notes_cubit.dart';
+import '../features/shop/screens/news_page.dart';
+import '../features/shop/screens/shop_page.dart';
+import '../features/shop/shop_cubit.dart';
 import '../firebase_options.dart';
-import 'di/injection_container.dart' as di;
 import 'screen_log_observer.dart';
 import 'shop_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await di.init(
-    useAndroidCatalog:
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
-  );
+  final preferences = await SharedPreferences.getInstance();
+  final androidCatalog =
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+      ? AndroidCatalog()
+      : null;
+  final catalog = DrinkCatalog(readCachedCatalog: androidCatalog?.readCatalog);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  runApp(
+    MyApp(
+      catalog: catalog,
+      cartStore: CartStore(preferences, catalog),
+      authStore: AuthStore(preferences),
+      androidCatalog: androidCatalog,
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({
+    super.key,
+    required this.catalog,
+    required this.cartStore,
+    required this.authStore,
+    this.androidCatalog,
+  });
+
+  final DrinkCatalog catalog;
+  final CartStore cartStore;
+  final AuthStore authStore;
+  final AndroidCatalog? androidCatalog;
 
   @override
   Widget build(BuildContext context) {
+    final android = androidCatalog;
     return MultiBlocProvider(
       providers: [
-        BlocProvider<CartCubit>(create: (_) => di.sl<CartCubit>()..load()),
+        BlocProvider<CartCubit>(create: (_) => CartCubit(cartStore)..load()),
         BlocProvider<ShopCubit>(
-          create: (_) => di.sl<ShopCubit>()..loadDrinks(),
+          create: (_) => ShopCubit(
+            catalog: catalog,
+            refreshCatalog: android?.refreshCatalog,
+            catalogChanges: android?.catalogChanges,
+          )..loadDrinks(),
         ),
         BlocProvider<AuthCubit>(
-          create: (_) => di.sl<AuthCubit>()..checkLoggedIn(),
+          create: (_) => AuthCubit(authStore)..checkLoggedIn(),
         ),
-        if (di.sl.isRegistered<DrinkNotesCubit>())
+        if (android != null)
           BlocProvider<DrinkNotesCubit>(
-            create: (_) => di.sl<DrinkNotesCubit>()..load(),
+            create: (_) => DrinkNotesCubit(android)..load(),
           ),
       ],
       child: MaterialApp(

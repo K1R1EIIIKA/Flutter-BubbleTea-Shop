@@ -3,14 +3,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:labs/features/shop/data/datasources/drink_local_data_source.dart';
-import 'package:labs/features/shop/data/models/drink_model.dart';
-import 'package:labs/features/shop/data/repositories/drink_repository_impl.dart';
-import 'package:labs/features/shop/domain/entities/drink_entity.dart';
-import 'package:labs/features/shop/domain/repositories/drink_notes_repository.dart';
-import 'package:labs/features/shop/domain/usecases/get_all_drinks_usecase.dart';
-import 'package:labs/features/shop/presentation/bloc/drink_notes_cubit.dart';
-import 'package:labs/features/shop/presentation/bloc/shop_cubit.dart';
+import 'package:labs/features/shop/drink.dart';
+import 'package:labs/features/shop/drink_catalog.dart';
+import 'package:labs/features/shop/drink_notes_store.dart';
+import 'package:labs/features/shop/drink_notes_cubit.dart';
+import 'package:labs/features/shop/shop_cubit.dart';
 
 const _mango = <String, Object>{
   'name': 'Mango',
@@ -19,43 +16,37 @@ const _mango = <String, Object>{
   'price': 350,
 };
 
-DrinkLocalDataSource _source(Future<String?> Function() read) =>
-    DrinkLocalDataSourceImpl(
-      assetPath: 'assets/data/drinks.json',
-      readCachedCatalog: read,
-    );
-
-DrinkRepositoryImpl _repository(Future<String?> Function() read) =>
-    DrinkRepositoryImpl(localDataSource: _source(read));
+DrinkCatalog _catalog(Future<String?> Function() read) =>
+    DrinkCatalog(readCachedCatalog: read);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Drink JSON mapping', () {
     test('Converts an integer price to double', () {
-      expect(DrinkModel.fromJson(_mango).price, isA<double>());
-      expect(DrinkModel.fromJson(_mango).price, 350.0);
+      expect(Drink.fromJson(_mango).price, isA<double>());
+      expect(Drink.fromJson(_mango).price, 350.0);
     });
 
     test('Preserves fractional prices', () {
-      expect(DrinkModel.fromJson({..._mango, 'price': 349.50}).price, 349.50);
+      expect(Drink.fromJson({..._mango, 'price': 349.50}).price, 349.50);
     });
 
     test(
       'Uses the original name and description when translation is absent',
       () {
-        final drink = DrinkModel.fromJson(_mango).toEntity();
+        final drink = Drink.fromJson(_mango);
         expect(drink.displayName, 'Mango');
         expect(drink.displayDescription, 'Mango tea');
       },
     );
 
     test('Keeps the canonical key when displaying a translation', () {
-      final drink = DrinkModel.fromJson({
+      final drink = Drink.fromJson({
         ..._mango,
         'nameRu': 'Манго',
         'descriptionRu': 'Чай с манго',
-      }).toEntity();
+      });
       expect(drink.name, 'Mango');
       expect(drink.displayName, 'Манго');
       expect(drink.displayDescription, 'Чай с манго');
@@ -63,63 +54,61 @@ void main() {
 
     test('Maps a known category', () {
       expect(
-        DrinkModel.fromJson({..._mango, 'category': 'fruit'}).category,
+        Drink.fromJson({..._mango, 'category': 'fruit'}).category,
         DrinkCategory.fruit,
       );
     });
 
     test('Accepts a future category without misclassifying the drink', () {
       expect(
-        DrinkModel.fromJson({..._mango, 'category': 'seasonal'}).category,
+        Drink.fromJson({..._mango, 'category': 'seasonal'}).category,
         isNull,
       );
     });
 
     test('Only explicit true marks a drink popular', () {
-      expect(DrinkModel.fromJson(_mango).popular, isFalse);
-      expect(DrinkModel.fromJson({..._mango, 'popular': true}).popular, isTrue);
+      expect(Drink.fromJson(_mango).popular, isFalse);
+      expect(Drink.fromJson({..._mango, 'popular': true}).popular, isTrue);
     });
 
     test('Rejects a malformed price type', () {
       expect(
-        () => DrinkModel.fromJson({..._mango, 'price': '350'}),
+        () => Drink.fromJson({..._mango, 'price': '350'}),
         throwsA(isA<TypeError>()),
       );
     });
   });
 
-  group('Catalog data source and repository', () {
+  group('Drink catalog', () {
     test('Uses the Room snapshot when it exists', () async {
-      final drinks = await _source(
-        () async => jsonEncode([_mango]),
-      ).loadDrinksFromJson();
+      final drinks = await _catalog(() async => jsonEncode([_mango])).load();
       expect(drinks.map((drink) => drink.name), ['Mango']);
     });
 
     test('Reads the bundled JSON on first run without a snapshot', () async {
-      final drinks = await _source(() async => null).loadDrinksFromJson();
+      final drinks = await _catalog(() async => null).load();
       expect(drinks.map((drink) => drink.name), contains('Mango'));
     });
 
     test('Keeps a valid empty snapshot empty', () async {
-      expect(await _source(() async => '[]').loadDrinksFromJson(), isEmpty);
+      expect(await _catalog(() async => '[]').load(), isEmpty);
     });
 
     test('Reports malformed JSON', () async {
       await expectLater(
-        _source(() async => '[').loadDrinksFromJson(),
+        _catalog(() async => '[').load(),
         throwsFormatException,
       );
     });
 
     test('Looks up a drink by its canonical name', () async {
-      final repository = _repository(() async => jsonEncode([_mango]));
-      expect((await repository.getDrinkByName('Mango')).price, 350.0);
+      final catalog = _catalog(() async => jsonEncode([_mango]));
+      expect((await catalog.getDrinkByName('Mango')).price, 350.0);
     });
 
     test('Fails lookup of a missing drink', () async {
-      final repository = _repository(() async => '[]');
-      await expectLater(repository.getDrinkByName('Mango'), throwsStateError);
+      final catalog = _catalog(() async => '[]');
+      await expectLater(catalog.getDrinkByName('Mango'), throwsStateError);
     });
   });
 
@@ -134,7 +123,7 @@ void main() {
       json = jsonEncode([_mango]);
       refresh = () async {};
       cubit = ShopCubit(
-        getAllDrinksUseCase: GetAllDrinksUseCase(_repository(() async => json)),
+        catalog: _catalog(() async => json),
         refreshCatalog: () => refresh(),
         catalogChanges: changes.stream,
       );
@@ -271,7 +260,7 @@ void main() {
   });
 }
 
-class _NotesStore implements DrinkNotesRepository {
+class _NotesStore implements DrinkNotesStore {
   final notes = <String, DrinkNote>{};
   String? selectedPhoto;
 
